@@ -1,0 +1,30 @@
+﻿Nr,Name,Type,Values
+1,prescribe,float64,
+2,Man,float64,
+3,epccb,float64,
+4,efccb,float64,
+5,chyem,float64,
+6,loan,float64,
+7,proczr,category,"{0,1,2,3,4,5,6,7,8,9}"
+8,pchem,float64,
+9,signemp,category,{0.1}
+10,Mont,float64,
+11,newbuts,category,"{1,2,3,4,5,6}"
+12,expensivee,float64,
+13,Arevem,float64,
+14,revem,float64,
+15,proem2,category,"{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25 , 26.27.29}"
+16,etcem,category,"{1,2,3,5,6,8}"
+17,slashed,category,"{1,2,3,4}"
+18,aaaem,float64,
+19,naie,float64,
+20,in Belgium,float64,
+21,update,float64,
+22,tel,category,{0.1}
+23,Prop,category,"{0,1,2,3,4}"
+24,Domem,category,{0.1}
+25,foreign,category,{0.1}
+26,tend,float64,
+27,income,float64,
+28,available,float64,
+29,censor,bool,"{1,2}"
