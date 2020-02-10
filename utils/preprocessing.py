@@ -3,6 +3,10 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 import numpy as np
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 
 class HighVIFDropper(BaseEstimator, TransformerMixin):
@@ -45,3 +49,31 @@ class HighVIFDropper(BaseEstimator, TransformerMixin):
                 self._high_vif_cols.append(original_indices.pop(max_col))
                 data = np.delete(data, max_col, axis=1)
                 drop = True
+
+
+def create_preprocessing_pipeline(data):
+    numeric_features = data.select_dtypes("number").columns
+    numeric_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("vif_dropper", HighVIFDropper(threshold=10)),
+            ("scaler", StandardScaler()),
+        ]
+    )
+
+    categorical_features = data.select_dtypes("category").columns
+    categorical_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore")),
+        ]
+    )
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("numerical", numeric_pipeline, numeric_features),
+            ("categorical", categorical_pipeline, categorical_features),
+        ]
+    )
+
+    return preprocessor
