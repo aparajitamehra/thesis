@@ -23,7 +23,6 @@ def load_credit_scoring_data(data_path, descriptor_path):
         data_path,
         header=None,
         skipinitialspace=True,
-        sep=" ",
         names=descriptor["Name"],
         dtype=dtype_dict,
     )

@@ -14,10 +14,8 @@ def create_classifier(preprocessor, classifier):
     return clf
 
 
-def main():
-    data = load_credit_scoring_data(
-        "datasets/bene2/input_bene2.txt", "datasets/bene2/descriptor_bene2.csv"
-    )
+def main(data_path, descriptor_path):
+    data = load_credit_scoring_data(data_path, descriptor_path)
 
     y = data.pop("censor")
     X = data
@@ -68,4 +66,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for ds_name in ["UK", "bene1", "bene2", "german"]:
+        main(
+            f"datasets/{ds_name}/input_{ds_name}.csv",
+            f"datasets/{ds_name}/descriptor_{ds_name}.csv",
+        )
