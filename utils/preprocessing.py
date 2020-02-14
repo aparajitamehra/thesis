@@ -1,8 +1,8 @@
 """This module contains functions related to data preprocessing."""
+import numpy as np
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -51,7 +51,51 @@ class HighVIFDropper(BaseEstimator, TransformerMixin):
                 drop = True
 
 
-def create_preprocessing_pipeline(data):
+class EmbeddingExtractor((BaseEstimator, TransformerMixin)):
+    def __init__(self, embedding_trainer, weights=None):
+        # self.transform_model = None
+        # self.weights = weights
+        # if self.weights:
+        # try:
+        # self.transform_model = keras.model.load_from(weights)
+        # except:
+        # weights file error during load
+        # print("WARNING: could not load weights,
+        # will learn embeddings on next fit")
+        # self.transform_model = None
+        return self
+
+    # def save(self, weights):
+    #     if self.transform_model:
+    #         self.transform_model.save(weights)
+
+    def fit(self, X, y=None):
+        # if self.transform_model:
+        # return self
+        # else:
+        # for each categorical var
+        # input_models.append(input_model)
+        # embeddings.append(embedding)
+        # add numerical stuff too
+
+        # prev_layer = embeddings
+        # for i, layer in enumerate(self.embedding_trainer):
+        #     self.embedding_trainer[i] = layer(prev_layer)
+        #     prev_layer = layer
+        # model = Model(inputs=input_models, outputs=self.embedding_trainer[-1])
+        # model.compile()
+        # model.fit(X)
+        # self.transform_model = Model(inputs=input_models, outputs=embeddings)
+
+        return self
+
+    def transform(self, X, y=None):
+        # tfs = self.transform_model.predict(X)
+        # return np.concatenate(tfs, axis=1)
+        return self
+
+
+def preprocessing_pipeline_onehot(data):
     numeric_features = data.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
         steps=[
@@ -60,7 +104,6 @@ def create_preprocessing_pipeline(data):
             ("scaler", StandardScaler()),
         ]
     )
-
     categorical_features = data.select_dtypes("category").columns
     categorical_pipeline = Pipeline(
         steps=[
@@ -68,12 +111,28 @@ def create_preprocessing_pipeline(data):
             ("onehot", OneHotEncoder(handle_unknown="ignore")),
         ]
     )
-
-    preprocessor = ColumnTransformer(
+    preprocessor_onehot = ColumnTransformer(
         transformers=[
             ("numerical", numeric_pipeline, numeric_features),
             ("categorical", categorical_pipeline, categorical_features),
         ]
     )
+    return preprocessor_onehot
 
-    return preprocessor
+
+def preprocessing_pipeline_embedding(data):
+    numeric_features = data.select_dtypes("number").columns
+    numeric_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("vif_dropper", HighVIFDropper(threshold=10)),
+            ("scaler", StandardScaler()),
+        ]
+    )
+    num_transformer = ColumnTransformer(
+        transformers=[("numerical", numeric_pipeline, numeric_features)]
+    )
+    preprocessor_emb = Pipeline(
+        steps=[("column", num_transformer), ("embeddings", EmbeddingExtractor())]
+    )
+    return preprocessor_emb
