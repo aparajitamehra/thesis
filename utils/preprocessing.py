@@ -51,8 +51,8 @@ class HighVIFDropper(BaseEstimator, TransformerMixin):
                 drop = True
 
 
-class EmbeddingExtractor((BaseEstimator, TransformerMixin)):
-    def __init__(self, embedding_trainer, weights=None):
+#class EmbeddingExtractor((BaseEstimator, TransformerMixin)):
+ #   def __init__(self, embedding_trainer, weights=None):
         # self.transform_model = None
         # self.weights = weights
         # if self.weights:
@@ -63,7 +63,7 @@ class EmbeddingExtractor((BaseEstimator, TransformerMixin)):
         # print("WARNING: could not load weights,
         # will learn embeddings on next fit")
         # self.transform_model = None
-        return self
+    #    return self
 
     # def save(self, weights):
     #     if self.transform_model:
@@ -100,7 +100,7 @@ def preprocessing_pipeline_onehot(data):
     numeric_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
-            ("vif_dropper", HighVIFDropper(threshold=10)),
+           # ("vif_dropper", HighVIFDropper(threshold=10)),
             ("scaler", StandardScaler()),
         ]
     )
