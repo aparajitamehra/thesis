@@ -7,7 +7,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import RobustScaler, OneHotEncoder
 
 # from keras.layers import Input, Dense, Activation, Reshape
 # from keras.models import Model
@@ -183,8 +183,8 @@ def preprocessing_pipeline_onehot(data):
     numeric_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
-            ("vif_dropper", HighVIFDropper(threshold=10)),
-            ("scaler", StandardScaler()),
+            ("highVifDropper", HighVIFDropper()),
+            ("scaler", RobustScaler()),
         ]
     )
     categorical_features = data.select_dtypes(include=("bool", "category")).columns
