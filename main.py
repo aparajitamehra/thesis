@@ -1,10 +1,16 @@
+import pandas as pd
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import make_scorer, recall_score, roc_curve
+from sklearn.metrics import (
+    make_scorer,
+    recall_score,
+    roc_curve,
+    balanced_accuracy_score,
+)
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -36,37 +42,48 @@ scorers = {
     "f1_score": make_scorer(f1_score),
     "accuracy_score": make_scorer(accuracy_score),
     "my_auc": my_auc,
+    "balanced_accuracy": make_scorer(balanced_accuracy_score),
 }
+
+key_results = [
+    "mean_test_recall_score",
+    "mean_test_f1_score",
+    "mean_test_accuracy_score",
+    "mean_test_my_auc",
+    "mean_test_balanced_accuracy",
+]
 
 
 def lggridsearch(classifier):
     grid_lg = {
         "penalty": ["l1", "l2", "elasticnet"],
         "dual": [True, False],
-        "C": np.logspace(0, 5, 7),
+        "C": np.logspace(-1, 1, 7),
         "solver": ["newton-cg", "lbfgs", "liblinear", "sag", "saga"],
     }
 
     gridlg = GridSearchCV(
         estimator=classifier,
         param_grid=grid_lg,
-        cv=2,
+        cv=5,
         n_jobs=-1,
         scoring=scorers,
-        refit="f1_score",
+        refit="balanced_accuracy",
+        verbose=1,
+        return_train_score=True,
     )
     return gridlg
 
 
 def rfgridsearch(classifier):
     # Number of trees in random forest
-    n_estimators = [int(x) for x in np.linspace(start=100, stop=1200, num=11)]
+    n_estimators = [int(x) for x in np.linspace(start=600, stop=1200, num=5)]
     # Number of features to consider at every split
     max_features = ["auto", "sqrt"]
     # Maximum number of levels in tree
-    max_depth = [5, 8, 15, 25, 30]
+    max_depth = [2, 5, 8]
     # Minimum number of samples required to split a node
-    min_samples_split = [2, 5, 10]
+    min_samples_split = [2, 3, 5, 8]
     # Minimum number of samples required at each leaf node
     min_samples_leaf = [1, 2, 5]
     # Method of selecting samples for training each tree
@@ -84,33 +101,24 @@ def rfgridsearch(classifier):
     gridrf = GridSearchCV(
         estimator=classifier,
         param_grid=grid_rf,
-        cv=5,
+        cv=2,
         n_jobs=-1,
         scoring=scorers,
-        refit="f1_score",
+        refit="balanced_accuracy",
+        verbose=1,
     )
 
-    # bestrf = gridrf.fit(X_train, y_train)
     return gridrf
 
 
 def mlpgridsearch(classifier):
     grid_mlp = {
-        "batch_size": [10, 100, 1000, "auto"],
-        "hidden_layer_sizes": [
-            (5, 2),
-            (20, 2),
-            (50, 2),
-            (75, 2),
-            (100, 2),
-            (50, 20, 2),
-            (20, 20, 2),
-            (10, 10, 2),
-        ],
-        "activation": ["relu", "tanh"],
-        "solver": ["sgd", "lbfgs", "adam"],
-        "alpha": [0.0001, 0.001, 0.01, 0.05, 0.1],
-        "momentum": [0.6, 0.8, 1.0],
+        "batch_size": [100, 700, "auto"],
+        "hidden_layer_sizes": [(5, 2), (20, 2), (75, 2)],
+        "activation": ["tanh"],
+        "solver": ["lbfgs"],
+        "alpha": [0.001],
+        "momentum": [0.8, 1.0],
         "learning_rate": ["constant", "adaptive"],
     }
 
@@ -118,9 +126,10 @@ def mlpgridsearch(classifier):
         estimator=classifier,
         param_grid=grid_mlp,
         n_jobs=-1,
-        cv=2,
+        cv=5,
         scoring=scorers,
-        refit="f1_score",
+        refit="balanced_accuracy",
+        verbose=1,
     )
 
     return gridmlp
@@ -131,7 +140,9 @@ def main(data_path, descriptor_path):
 
     y = data.pop("censor")
     X = data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=1
+    )
 
     onehot_preprocessor = preprocessing_pipeline_onehot(X_train)
 
@@ -175,17 +186,21 @@ def main(data_path, descriptor_path):
     for name, clf in classifiers.items():
         clf.fit(X_train, y_train)
         print(f'{name} Best parameters found: {clf["classifier"].best_params_}')
-        print(f'{name} f1 score: {clf["classifier"].best_score_}')
+        print(f'{name} score: {clf["classifier"].best_score_}')
+        pd.DataFrame(clf["classifier"].cv_results_)[key_results].to_csv(
+            f"{name}_results.csv"
+        )
 
-        X_test = onehot_preprocessor.fit_transform(X_test)
-        y_pred = clf["classifier"].predict(X_test)
+        X_test_tr = clf["preprocessor"].transform(X_test)
+        y_pred = clf["classifier"].predict(X_test_tr)
+
         labels = [0, 1]
         print(confusion_matrix(y_test, y_pred, labels=labels))
         print(classification_report(y_test, y_pred))
 
 
 if __name__ == "__main__":
-    for ds_name in ["german"]:
+    for ds_name in ["bene1"]:
         print(ds_name)
         main(
             f"datasets/{ds_name}/input_{ds_name}.csv",
