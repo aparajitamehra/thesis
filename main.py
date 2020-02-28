@@ -5,6 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -25,6 +26,7 @@ from utils.preprocessing import (
     preprocessing_pipeline_dummy,
 )
 import numpy as np
+from kerasformain import makeweightedMLP,plot_metrics, make_weightedCNN
 
 
 def create_classifier(preprocessor, classifier):
@@ -138,14 +140,17 @@ def mlpgridsearch(classifier):
     return gridmlp
 
 
-def main(data_path, descriptor_path):
+def main(data_path, descriptor_path, ds_name):
     data = load_credit_scoring_data(data_path, descriptor_path)
 
     y = data.pop("censor")
     X = data
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=1
     )
+
+
 
     onehot_preprocessor = preprocessing_pipeline_onehot(X_train)
     dummy_preprocessor = preprocessing_pipeline_dummy(X_train)
@@ -180,14 +185,16 @@ def main(data_path, descriptor_path):
         mlpgridsearch(MLPClassifier(max_iter=5000, early_stopping=True)),
     )
 
-    classifiers = {
+    sklclassifiers = {
         "LogisticRegressionCV": log_reg,
         "RandomForest": random_forest,
         "AdaBoostClassifier": adaboost,
         "MLP": mlp,
     }
 
-    for name, clf in classifiers.items():
+
+    '''
+    for name, clf in sklclassifiers.items():
         clf.fit(X_train, y_train)
         print(f'{name} Best parameters found: {clf["classifier"].best_params_}')
         print(f'{name} score: {clf["classifier"].best_score_}')
@@ -201,12 +208,28 @@ def main(data_path, descriptor_path):
         labels = [0, 1]
         print(confusion_matrix(y_test, y_pred, labels=labels))
         print(classification_report(y_test, y_pred))
+    '''
+
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    weightedMLP =makeweightedMLP(X_train, X_test, y_train, y_test)
+    plt.figure(ds_name)
+    plot_metrics(weightedMLP,'MLP',colors[0])
+    cnnhist= make_weightedCNN(X_train, X_test, y_train, y_test)
+    plot_metrics(cnnhist,'CNN', colors[1])
+
+
 
 
 if __name__ == "__main__":
-    for ds_name in ["bene1"]:
+
+    #for ds_name in ["UK"]:
+    for ds_name in ["UK", "bene1", "bene2", "german"]:
         print(ds_name)
         main(
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",
+            ds_name,
         )
+
+    plt.show()

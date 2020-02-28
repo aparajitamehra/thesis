@@ -38,6 +38,7 @@ data = load_credit_scoring_data(
 
 
 
+
 y = data.pop("censor")
 X = data
 
