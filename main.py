@@ -20,7 +20,10 @@ from sklearn.metrics import (
 )
 
 from utils.data import load_credit_scoring_data
-from utils.preprocessing import preprocessing_pipeline_onehot
+from utils.preprocessing import (
+    preprocessing_pipeline_onehot,
+    preprocessing_pipeline_dummy,
+)
 import numpy as np
 
 
@@ -145,9 +148,10 @@ def main(data_path, descriptor_path):
     )
 
     onehot_preprocessor = preprocessing_pipeline_onehot(X_train)
+    dummy_preprocessor = preprocessing_pipeline_dummy(X_train)
 
     log_reg = create_classifier(
-        onehot_preprocessor,
+        dummy_preprocessor,
         lggridsearch(LogisticRegression(max_iter=5000, class_weight="balanced",),),
     )
 
@@ -206,5 +210,3 @@ if __name__ == "__main__":
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",
         )
-
-

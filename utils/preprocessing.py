@@ -1,6 +1,7 @@
 """This module contains functions related to data preprocessing."""
 # import keras
 import numpy as np
+import pandas as pd
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from statsmodels.stats.outliers_influence import variance_inflation_factor
@@ -201,7 +202,40 @@ def preprocessing_pipeline_onehot(data):
             ("categorical", categorical_pipeline, categorical_features),
         ]
     )
+
     return onehot_preprocessor
+
+
+def preprocessing_pipeline_dummy(data):
+
+    categorical_features = data.select_dtypes(include="category").columns
+    cat_list = []
+    for var in categorical_features:
+        cat = "var" + "_" + var
+        cat = pd.get_dummies(data[var], prefix=var)
+        data1 = data.join(cat)
+        data = data1
+        cat_list = cat_list + (cat.columns.values.tolist())
+    data_vars = data.columns.values.tolist()
+    to_keep = [i for i in data_vars if i not in categorical_features]
+
+    data_final = data[to_keep]
+    data_final.columns.values
+
+    numeric_features = data_final.columns.difference(cat_list)
+    numeric_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("highVifDropper", HighVIFDropper()),
+            ("scaler", StandardScaler()),
+        ]
+    )
+
+    dummy_preprocessor = ColumnTransformer(
+        transformers=[("numerical", numeric_pipeline, numeric_features)]
+    )
+
+    return dummy_preprocessor
 
 
 def MLPpreprocessing_pipeline_onehot(data):
@@ -226,6 +260,7 @@ def MLPpreprocessing_pipeline_onehot(data):
             ("categorical", categorical_pipeline, categorical_features),
         ]
     )
+
     return onehot_preprocessor
 
 
