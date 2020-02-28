@@ -54,19 +54,20 @@ my_auc = make_scorer(custom_auc, greater_is_better=True, needs_proba=True)
 # define grid search parameter space
 parameter_space = {
     "hidden_layer_sizes": [
-        (5, 2),
-        (20, 2),
-        (50, 2),
-        (75, 2),
-        (100, 2),
-        (50, 20, 2),
-        (20, 20, 2),
-        (10, 10, 2),
+        #(5, 2),
+        #(20, 2),
+        #(50, 2),
+        #(75, 2),
+        #(100, 2),
+        #(50, 20, 2),
+        #(20, 20, 2),
+        #(10, 10, 2),
+        (16,2),
     ],
-    "activation": ["relu", "tanh"],
+    #"activation": ["relu", "tanh"],
     "solver": ["sgd", "lbfgs", "adam"],
     "alpha": [0.0001, 0.001, 0.01, 0.05, 0.1],
-    "momentum": [0.6, 0.8, 1.0],
+    #"momentum": [0.6, 0.8, 1.0],
     "learning_rate": ["constant", "adaptive"],
 }
 # define scorers for fitting classifier
