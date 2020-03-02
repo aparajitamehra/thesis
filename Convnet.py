@@ -111,7 +111,7 @@ def make_cnnmodel(metrics = METRICS, output_bias = None):
         keras.layers.GlobalMaxPooling1D(),
         keras.layers.Dropout(0.1),
         keras.layers.Dense(16, activation='relu'),
-        keras.layers.Dense(1, activation='sigmoid', bias_initializer=output_bias), #2
+        keras.layers.Dense(1, activation='sigmoid', bias_initializer=output_bias),
 
     ])
 

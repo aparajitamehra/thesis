@@ -10,7 +10,7 @@ from sklearn.metrics import confusion_matrix
 
 import numpy as np
 from numpy import newaxis
-from utils.preprocessing import preprocessing_pipeline_onehot, MLPpreprocessing_pipeline_onehot
+from utils.preprocessing import preprocessing_pipeline_onehot, MLPpreprocessing_pipeline_onehot #CNNpreprocessing_pipeline_onehot
 from sklearn.model_selection import train_test_split, GridSearchCV
 
 from keras.preprocessing import sequence
@@ -78,7 +78,7 @@ def prepcnn(X_train, X_test, y_train, y_test):
 
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2)
 
-    onehot_preprocessor = MLPpreprocessing_pipeline_onehot(X_train)
+    onehot_preprocessor = CNNpreprocessing_pipeline_onehot(X_train)
     onehot_preprocessor.fit(X_train)
     X_train = onehot_preprocessor.transform(X_train)
     X_test = onehot_preprocessor.transform(X_test)
