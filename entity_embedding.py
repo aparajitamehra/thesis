@@ -69,3 +69,34 @@ class EntityEmbedder(BaseEstimator, TransformerMixin):
         output_embedding = Reshape(target_shape=(embedding_size,))(output_embedding)
 
         return input_model, output_embedding
+
+
+if __name__ == "__main__":
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import OrdinalEncoder
+    from utils.data import load_credit_scoring_data
+
+    for ds_name in ["german", "UK", "bene1", "bene2"]:
+        data = load_credit_scoring_data(
+            f"datasets/{ds_name}/input_{ds_name}.csv",
+            f"datasets/{ds_name}/descriptor_{ds_name}.csv",
+        )
+
+        y = data.pop("censor")
+        X = data
+
+        categorical_features = X.select_dtypes("category").columns
+        categorical_pipeline = Pipeline(
+            steps=[("encoder", OrdinalEncoder()), ("embedder", EntityEmbedder())]
+        )
+
+        ct = ColumnTransformer(
+            transformers=[("categorical", categorical_pipeline, categorical_features)]
+        )
+
+        ct.fit(X, y)
+
+        ct.named_transformers_["categorical"].named_steps[
+            "embedder"
+        ].embedding_model.save(f"datasets/{ds_name}/embedding_model_{ds_name}.h5")
