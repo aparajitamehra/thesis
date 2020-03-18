@@ -1,5 +1,6 @@
 .DS_Store
-.idea/
+../.idea/
+*.h5
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -108,7 +109,7 @@ celerybeat.pid
 .env
 .venv
 env/
-venv/
+../venv/
 ENV/
 env.bak/
 venv.bak/
@@ -130,3 +131,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/[old]results_plots/

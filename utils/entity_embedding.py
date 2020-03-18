@@ -1,3 +1,4 @@
+from keras.callbacks import EarlyStopping
 from keras.layers import (
     Input,
     Dense,
@@ -10,6 +11,8 @@ from keras.layers.embeddings import Embedding
 from keras.models import Model
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 
 class EntityEmbedder(BaseEstimator, TransformerMixin):
@@ -24,21 +27,30 @@ class EntityEmbedder(BaseEstimator, TransformerMixin):
             return self
 
     def _fit(self, X, y):
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, stratify=y, test_size=0.2
+        )
+
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_train, y_train, test_size=0.2
+        )
+
         input_models = []
         output_embeddings = []
 
-        for category in X.T:
+        for category in X_train.T:
             input_model, output_embedding = self._create_category_embedding(category)
             input_models.append(input_model)
             output_embeddings.append(output_embedding)
 
         trainer_output = Concatenate()(output_embeddings)
-        trainer_output = Dense(1000, kernel_initializer="uniform")(trainer_output)
-        trainer_output = Activation("relu")(trainer_output)
-        trainer_output = Dropout(0.4)(trainer_output)
-        trainer_output = Dense(512, kernel_initializer="uniform")(trainer_output)
+        trainer_output = Dense(500, kernel_initializer="uniform")(trainer_output)
         trainer_output = Activation("relu")(trainer_output)
         trainer_output = Dropout(0.3)(trainer_output)
+        trainer_output = Dense(250, kernel_initializer="uniform")(trainer_output)
+        trainer_output = Activation("relu")(trainer_output)
+        trainer_output = Dropout(0.2)(trainer_output)
         trainer_output = Dense(1, activation="sigmoid")(trainer_output)
 
         embedding_trainer = Model(inputs=input_models, outputs=trainer_output)
@@ -46,7 +58,26 @@ class EntityEmbedder(BaseEstimator, TransformerMixin):
             loss="mean_squared_error", optimizer="Adam", metrics=["mse", "mape"]
         )
 
-        embedding_trainer.fit(X.T.tolist(), y, epochs=2, batch_size=512)
+        early_stopping = EarlyStopping(
+            monitor="val_loss", patience=50, mode="min", restore_best_weights=True
+        )
+
+        embedding_history = embedding_trainer.fit(
+            X_train.T.tolist(),
+            y_train,
+            epochs=500,
+            batch_size=200,
+            validation_data=(X_val.T.tolist(), y_val),
+            callbacks=[early_stopping],
+        )
+
+        plt.plot(embedding_history.history["loss"])
+        plt.plot(embedding_history.history["val_loss"])
+        plt.title("loss")
+        plt.ylabel("loss")
+        plt.xlabel("epoch")
+        plt.legend(["train", "val"], loc="upper right")
+        plt.show()
 
         self.embedding_model = Model(inputs=input_models, outputs=output_embeddings)
         self.embedding_model.compile(
@@ -77,7 +108,7 @@ if __name__ == "__main__":
     from sklearn.preprocessing import OrdinalEncoder
     from utils.data import load_credit_scoring_data
 
-    for ds_name in ["german", "UK", "bene1", "bene2"]:
+    for ds_name in ["bene2"]:
         data = load_credit_scoring_data(
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",
@@ -86,7 +117,9 @@ if __name__ == "__main__":
         y = data.pop("censor")
         X = data
 
-        categorical_features = X.select_dtypes("category").columns
+        categorical_features = X.select_dtypes(include=("category", "bool")).columns
+        encoding_cats = [sorted(X[i].unique().tolist()) for i in categorical_features]
+
         categorical_pipeline = Pipeline(
             steps=[("encoder", OrdinalEncoder()), ("embedder", EntityEmbedder())]
         )
