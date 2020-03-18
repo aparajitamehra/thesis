@@ -8,7 +8,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import RobustScaler, OneHotEncoder, StandardScaler, KBinsDiscretizer
 
 
 # from keras.layers import Input, Dense, Activation, Reshape
@@ -258,6 +258,26 @@ def MLPpreprocessing_pipeline_onehot(data):
         transformers=[
             ("numerical", numeric_pipeline, numeric_features),
             ("categorical", categorical_pipeline, categorical_features),
+        ]
+    )
+
+    return onehot_preprocessor
+
+
+def cnn2dprep_num(data,binsize):
+    numeric_features = data.select_dtypes("number").columns
+    print("n_numeric: ", numeric_features.size)
+    numeric_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("highVifDropper", HighVIFDropper()),
+            ("Standardizer", StandardScaler()),
+            ("discretizer", KBinsDiscretizer(n_bins=binsize, strategy='uniform',encode='onehot-dense'))
+        ]
+    )
+    onehot_preprocessor = ColumnTransformer(
+        transformers=[
+            ("numerical", numeric_pipeline, numeric_features),
         ]
     )
 

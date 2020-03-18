@@ -27,7 +27,7 @@ from utils.preprocessing import (
     preprocessing_pipeline_dummy,
 )
 import numpy as np
-from kerasformain import makeweightedMLP,plot_metrics, make_weightedCNN
+from kerasformain import makeweightedMLP,plot_metrics, make_weightedCNN, make_weighted2dCNN,make_weighted_hybrid_CNN
 
 
 def create_classifier(preprocessor, classifier):
@@ -234,7 +234,7 @@ def main(data_path, descriptor_path, ds_name):
     sklclassifiers = {
         "XGboost": XGboost
     }
-
+    '''
     for name, clf in sklclassifiers.items():
         clf.fit(X_train, y_train)
         print(f'{name} Best parameters found: {clf["classifier"].best_params_}')
@@ -250,8 +250,8 @@ def main(data_path, descriptor_path, ds_name):
         print(confusion_matrix(y_test, y_pred, labels=labels))
         print(classification_report(y_test, y_pred))
 
+    '''
 
-'''
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
     weightedMLP =makeweightedMLP(X_train, X_test, y_train, y_test)
@@ -260,13 +260,15 @@ def main(data_path, descriptor_path, ds_name):
     cnnhist= make_weightedCNN(X_train, X_test, y_train, y_test)
     plot_metrics(cnnhist,'CNN', colors[1])
 
-'''
-
+    #colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    hybrid=make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test)
+    plt.figure(ds_name)
+    plot_metrics(hybrid, 'hybrid', colors[2])
 
 if __name__ == "__main__":
 
-    #for ds_name in ["UK"]:
-    for ds_name in ["UK", "bene1", "bene2", "german"]:
+    #for ds_name in ["UK", "bene1", "bene2", "german"]:
+    for ds_name in ["UK"]:
         print(ds_name)
         main(
             f"datasets/{ds_name}/input_{ds_name}.csv",
