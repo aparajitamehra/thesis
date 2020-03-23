@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
 
 from keras.models import load_model
@@ -30,10 +31,12 @@ from utils.preprocessing import HighVIFDropper
 from utils.entity_embedding import EntityEmbedder
 
 
+# define fbeta metric with beta = 3
 def f2(y_true, y_pred):
-    return fbeta_score(y_true, y_pred, beta=2)
+    return fbeta_score(y_true, y_pred, beta=3)
 
 
+# define scorers
 scorers = {
     "recall_score": make_scorer(recall_score),
     "f1_score": make_scorer(f1_score),
@@ -44,6 +47,7 @@ scorers = {
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
 }
 
+# define key results to show in cv_results
 key_results = [
     "mean_test_recall_score",
     "mean_test_f1_score",
@@ -56,12 +60,16 @@ key_results = [
 
 
 def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
-    # set up data
+
+    # load and split data
     X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
         data_path, descriptor_path
     )
 
-    # set up preprocessing pipeline
+    oversampler = RandomOverSampler(sampling_strategy=0.8)
+    X_train, y_train = oversampler.fit_resample(X_train, y_train)
+
+    # set up template preprocessing pipelines
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
         steps=[
@@ -70,6 +78,7 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
             ("scaler", "passthrough"),
         ]
     )
+
     categorical_features = X.select_dtypes(include=("category", "bool")).columns
     encoding_cats = [sorted(X[i].unique().tolist()) for i in categorical_features]
 
@@ -88,7 +97,7 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # set up random forest as a preprocessing + classifier pipeline
+    # define classifier as a preprocessor and classifier pipeline
     ranfor_pipe = Pipeline(
         [
             ("preprocessing", preprocessor),
@@ -96,14 +105,14 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # set up grid search for preprocessing and classifier parameters
+    # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__n_estimators": [int(x) for x in np.linspace(start=200, stop=1200, num=2)],
+        "clf__n_estimators": [int(x) for x in np.linspace(start=200, stop=1200, num=5)],
         "clf__max_features": ["auto"],
         "clf__max_depth": [5],
         "clf__min_samples_split": [50],
         "clf__min_samples_leaf": [2],
-        "clf__bootstrap": [False],
+        "clf__bootstrap": [False, True],
         "preprocessing__numerical__imputer_num__strategy": ["median", "mean"],
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [RobustScaler(), StandardScaler()],
@@ -118,19 +127,20 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ],
     }
 
+    # define grid search for classifier
     ranfor_grid = GridSearchCV(
-        ranfor_pipe, param_grid=params, cv=3, scoring=scorers, refit="fbeta_score",
+        ranfor_pipe, param_grid=params, cv=3, scoring=scorers, refit="auc",
     )
 
     # fit pipeline to training data
     ranfor_grid.fit(X_train, y_train)
 
-    # get score and classification report for test data
+    # generate predictions for test data using fitted model
     preds = ranfor_grid.predict(X_test)
 
     # get best score and parameters and classification report for training data
     with open(f"ranfor_results_{ds_name}.txt", "w") as f:
-        f.write(f"Best fbeta on train set: {ranfor_grid.best_score_:.3f}\n")
+        f.write(f"Best auc on train set: {ranfor_grid.best_score_:.3f}\n")
         f.write(f"Best parameter set: {ranfor_grid.best_params_}\n")
         f.write(f"Best scores index: {ranfor_grid.best_index_}\n")
         f.write(
@@ -138,10 +148,16 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
             f"{classification_report(y_train, ranfor_grid.predict(X_train))}"
         )
 
+        # get score and classification report for test data
         f.write(f"Scores for test set: {classification_report(y_test, preds)}\n")
-        f.write(f"f1 score on test set: {f1_score(y_test, preds):.3f}")
-        f.write(f"fbeta_score on test set: {f2(y_test, preds):.3f}")
+        f.write(f"f1 score on test set: {f1_score(y_test, preds):.3f}\n")
+        f.write(f"fbeta_score on test set: {f2(y_test, preds):.3f}\n")
+        f.write(f"AUC of test set: {roc_auc_score(y_test, preds):.3f}\n")
+        f.write(f"Accuracy of test set: {accuracy_score(y_test, preds):.3f}\n")
+        f.write(f"Precision of test set: {precision_score(y_test, preds):.3f}\n")
+        f.write(f"Recall of test set: {recall_score(y_test, preds):.3f}\n")
 
+    # write key cv results to csv file
     pd.DataFrame(ranfor_grid.cv_results_)[key_results].to_csv(
         f"{ds_name}_ranfor_cv_results.csv"
     )
@@ -150,8 +166,10 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
 if __name__ == "__main__":
     from pathlib import Path
 
-    for ds_name in ["bene1"]:
+    # for each dataset:
+    for ds_name in ["UK"]:
         print(ds_name)
+        # define embedding model saved model file
         embedding_model = None
         embedding_model_path = f"datasets/{ds_name}/embedding_model_{ds_name}.h5"
         if Path(embedding_model_path).is_file():

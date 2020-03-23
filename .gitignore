@@ -1,6 +1,5 @@
 .DS_Store
 ../.idea/
-*.h5
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -132,3 +131,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /[old]results_plots/
+/draft_scripts

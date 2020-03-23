@@ -1,3 +1,4 @@
+imblearn
 xgboost
 IPython
 matplotlib

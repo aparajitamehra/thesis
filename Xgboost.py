@@ -1,4 +1,5 @@
 import pandas as pd
+from imblearn.over_sampling import RandomOverSampler
 from xgboost import XGBClassifier
 
 from keras.models import load_model
@@ -29,10 +30,12 @@ from utils.preprocessing import HighVIFDropper
 from utils.entity_embedding import EntityEmbedder
 
 
+# define fbeta metric with beta = 3
 def f2(y_true, y_pred):
-    return fbeta_score(y_true, y_pred, beta=2)
+    return fbeta_score(y_true, y_pred, beta=3)
 
 
+# define scorers
 scorers = {
     "recall_score": make_scorer(recall_score),
     "f1_score": make_scorer(f1_score),
@@ -43,6 +46,7 @@ scorers = {
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
 }
 
+# define key results to show in cv_results
 key_results = [
     "mean_test_recall_score",
     "mean_test_f1_score",
@@ -55,12 +59,16 @@ key_results = [
 
 
 def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
-    # set up data
+
+    # load and split data
     X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
         data_path, descriptor_path
     )
 
-    # set up preprocessing pipeline
+    oversampler = RandomOverSampler(sampling_strategy=0.8)
+    X_train, y_train = oversampler.fit_resample(X_train, y_train)
+
+    # set up template preprocessing pipelines
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
         steps=[
@@ -88,7 +96,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # set up XGBoost as a preprocessing + classifier pipeline
+    # define classifier as a preprocessor and classifier pipeline
     xgboost_pipe = Pipeline(
         [
             ("preprocessing", preprocessor),
@@ -97,22 +105,20 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
                 XGBClassifier(
                     silent=False,
                     scale_pos_weight=1,
-                    learning_rate=0.01,
                     colsample_bytree=0.4,
                     subsample=0.8,
                     objective="binary:logistic",
                     reg_alpha=0.3,
-                    gamma=10,
                 ),
             ),
         ]
     )
 
-    # set up grid search for preprocessing and classifier parameters
+    # set up grid search for preprocessing options and classifier parameters
     params = {
         "clf__max_depth": range(3, 10, 2),
         "clf__learning_rate": [0.1],
-        "clf__gamma": list([i / 10.0 for i in range(0, 5)]),
+        "clf__gamma": [i / 10.0 for i in range(0, 3)],
         "preprocessing__numerical__imputer_num__strategy": ["median", "mean"],
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [RobustScaler(), StandardScaler()],
@@ -127,24 +133,20 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         ],
     }
 
+    # define grid search for classifier
     xgboost_grid = GridSearchCV(
-        xgboost_pipe,
-        param_grid=params,
-        cv=3,
-        scoring=scorers,
-        refit="fbeta_score",
-        verbose=3,
+        xgboost_pipe, param_grid=params, cv=3, scoring=scorers, refit="auc",
     )
 
     # fit pipeline to training data
     xgboost_grid.fit(X_train, y_train)
 
-    # get score and classification report for test data
+    # generate predictions for test data using fitted model
     preds = xgboost_grid.predict(X_test)
 
     # get best score and parameters and classification report for training data
     with open(f"xgboost_results_{ds_name}.txt", "w") as f:
-        f.write(f"Best fbeta_score on train set: {xgboost_grid.best_score_:.3f}\n")
+        f.write(f"Best auc_score on train set: {xgboost_grid.best_score_:.3f}\n")
         f.write(f"Best parameter set: {xgboost_grid.best_params_}\n")
         f.write(f"Best scores index: {xgboost_grid.best_index_}\n")
         f.write(
@@ -152,10 +154,16 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
             f"{classification_report(y_train, xgboost_grid.predict(X_train))}"
         )
 
+        # get score and classification report for test data
         f.write(f"Scores for test set: {classification_report(y_test, preds)}\n")
-        f.write(f"f1 score on test set: {f1_score(y_test, preds):.3f}")
-        f.write(f"fbeta_score on test set: {f2(y_test, preds):.3f}")
+        f.write(f"f1 score on test set: {f1_score(y_test, preds):.3f}\n")
+        f.write(f"fbeta_score on test set: {f2(y_test, preds):.3f}\n")
+        f.write(f"AUC of test set: {roc_auc_score(y_test, preds):.3f}\n")
+        f.write(f"Accuracy of test set: {accuracy_score(y_test, preds):.3f}\n")
+        f.write(f"Precision of test set: {precision_score(y_test, preds):.3f}\n")
+        f.write(f"Recall of test set: {recall_score(y_test, preds):.3f}\n")
 
+    # write key cv results to csv file
     pd.DataFrame(xgboost_grid.cv_results_)[key_results].to_csv(
         f"{ds_name}_xgboost_cv_results.csv"
     )
@@ -164,8 +172,10 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
 if __name__ == "__main__":
     from pathlib import Path
 
+    # for each data set:
     for ds_name in ["bene2"]:
         print(ds_name)
+        # define embedding model saved model file
         embedding_model = None
         embedding_model_path = f"datasets/{ds_name}/embedding_model_{ds_name}.h5"
         if Path(embedding_model_path).is_file():
