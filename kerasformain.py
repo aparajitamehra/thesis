@@ -10,7 +10,7 @@ from sklearn.metrics import confusion_matrix
 
 import numpy as np
 from numpy import newaxis
-from utils.preprocessing import preprocessing_pipeline_onehot, MLPpreprocessing_pipeline_onehot,cnn2dprep_num #CNNpreprocessing_pipeline_onehot
+from utils.preprocessing import preprocessing_pipeline_onehot, MLPpreprocessing_pipeline_onehot,cnn2dprep_num, EntityPrep #CNNpreprocessing_pipeline_onehot
 from sklearn.model_selection import train_test_split, GridSearchCV
 
 from keras.preprocessing import sequence
@@ -31,7 +31,12 @@ import seaborn as sns
 import os
 import tempfile
 from scipy.sparse import csr_matrix, isspmatrix
-
+import talos
+from talos.utils import lr_normalizer
+from tensorflow.keras.utils import plot_model
+from imblearn.over_sampling import RandomOverSampler
+from keras.models import load_model
+from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, precision_score, recall_score, fbeta_score, balanced_accuracy_score
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -40,8 +45,19 @@ from sklearn.metrics import (
     auc,
 )
 
+def evaluate_metrics(proba_preds, class_preds, y_test, clf_name, ds_name):
+    import csv
+    with open('results_plots/keras_plots/{}_metrics.csv'.format(clf_name), 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=' ')
+        writer.writerow([ds_name, clf_name, 'AUC', roc_auc_score(y_test, proba_preds)])
+        writer.writerow([ds_name, clf_name, 'F1_score', f1_score(y_test, class_preds)])
+        writer.writerow([ds_name, clf_name, 'F_beta', fbeta_score(y_test, class_preds, beta=3)])
+        writer.writerow([ds_name, clf_name, 'Accuracy', accuracy_score(y_test, class_preds)])
+        writer.writerow([ds_name, clf_name, 'Balanced_Accuracy', balanced_accuracy_score(y_test, class_preds)])
+        writer.writerow([ds_name, clf_name, 'Precision', precision_score(y_test, class_preds)])
+        writer.writerow([ds_name, clf_name, 'Recall', recall_score(y_test, class_preds)])
 
-
+#preprocessors
 def prepmlp(X_train, X_test, y_train, y_test):
 
 
@@ -54,6 +70,37 @@ def prepmlp(X_train, X_test, y_train, y_test):
     X_train = onehot_preprocessor.transform(X_train)
     X_test = onehot_preprocessor.transform(X_test)
     X_val = onehot_preprocessor.transform(X_val)
+
+    if isspmatrix(X_train):
+        X_train = X_train.todense()
+    if isspmatrix(X_test):
+        X_test = X_test.todense()
+    if isspmatrix(X_val):
+        X_val = X_val.todense()
+
+# min max capping
+    X_train = np.clip(X_train, -5, 5)
+    X_val = np.clip(X_val, -5, 5)
+    X_test = np.clip(X_test, -5, 5)
+
+    y_train = np.asarray(y_train)
+    y_test = np.asarray(y_test)
+    y_val = np.asarray(y_val)
+
+    return X_train,y_train,X_test,y_test, X_val, y_val
+
+def prep_ent_mlp(X_train, X_test, y_train, y_test):
+
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2)
+
+# mlp preprocessing
+    entity_preprocessor = EntityPrep(X_train)
+    entity_preprocessor.fit(X_train)
+
+    X_train = entity_preprocessor.transform(X_train)
+    X_test = entity_preprocessor.transform(X_test)
+    X_val = entity_preprocessor.transform(X_val)
 
     if isspmatrix(X_train):
         X_train = X_train.todense()
@@ -149,7 +196,6 @@ def prep2dcnn(X_train, X_test, y_train, y_test, binsize):
     print("post func: ", X_train.shape)
     return X_train, y_train, X_test, y_test, X_val, y_val,ncols
 
-#hybrid preprocessing
 def prephybrid(X_train, X_test, y_train, y_test, binsize):
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=0.2, random_state=42)
 
@@ -218,6 +264,7 @@ def prephybrid(X_train, X_test, y_train, y_test, binsize):
 
     return X_train_num, y_train, X_test_num, y_test, X_val_num, y_val,X_train_cat,X_test_cat,X_val_cat, n_num, n_cat
 
+#model definitions
 def make_2dcnn(metrics, binsize, nfeats, output_bias=None,):
     if output_bias is not None:
         output_bias = tf.keras.initializers.Constant(output_bias)
@@ -265,7 +312,7 @@ def make_hybrid_model(metrics, binsize, n_num, n_cat,output_bias=None,):
     # plot graph
     plot_model(model, to_file='multiple_inputs.png')
 
-    model.compile(loss='binary_crossentropy', optimizer=keras.optimizers.Adam(lr=1e-2), metrics=metrics)
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
     return model
 
 def make_cnn(metrics, output_bias=None):
@@ -307,10 +354,76 @@ def make_MLP(xdim, metrics, output_bias=None):
 
     return model
 
-def plot_cm(labels, predictions, p=0.5):
+def tuned_MLP_model(X_train, y_train, X_val, y_val, params):
+
+
+    metrics = [
+        keras.metrics.TruePositives(name='tp'),
+        keras.metrics.FalsePositives(name='fp'),
+        keras.metrics.TrueNegatives(name='tn'),
+        keras.metrics.FalseNegatives(name='fn'),
+        keras.metrics.BinaryAccuracy(name='accuracy'),
+        keras.metrics.Precision(name='precision'),
+        keras.metrics.Recall(name='recall'),
+        keras.metrics.AUC(name='auc'),
+    ]
+
+    print('Build model...')
+    model = keras.Sequential([
+        keras.layers.Dense(params['first_neuron'], activation= params['activation'], input_shape=(X_train.shape[-1],)),
+        keras.layers.Dropout(params['dropout']),
+        keras.layers.Dense(1, activation='sigmoid'),
+
+    ])
+    model.compile(loss='binary_crossentropy',
+                  optimizer=params['optimizer'](lr=lr_normalizer(params['lr'], params['optimizer'])),
+                  metrics=metrics)
+
+    out = model.fit(x=X_train,
+                    y=y_train,
+                    validation_data=[X_val, y_val],
+                    epochs=params['epochs'],
+                    batch_size=params['batch_size'],
+                    verbose=0)
+
+    # modify the output model
+    return out, model
+
+def make_tuned_MLP(X_train, X_test, y_train, y_test):
+    from keras.optimizers import Adam, Nadam
+    from keras.activations import softmax
+    from keras.losses import categorical_crossentropy, logcosh
+
+    X_train, y_train, X_test, y_test, X_val, y_val = prepmlp(X_train, X_test, y_train, y_test)
+
+    p = {'lr': (0.1, 10, 10),
+         'first_neuron': [4, 8, 16],
+         'batch_size': [2, 3, 4],
+         'epochs': [200],
+         'dropout': (0, 0.40, 10),
+         'optimizer': [Adam, Nadam],
+         'loss': ['binary_crossentropy'],
+         'last_activation': ['softmax'],
+         'weight_regulizer': [None],
+         'activation':['relu', 'elu']}
+
+    scan_object = talos.Scan(x=X_train,
+                             y=y_train,
+                             params=p,
+                             model=tuned_MLP_model,
+                             experiment_name='iris',
+                             fraction_limit=.001)
+
+    scan_object.data.head()
+    return 0
+
+# plotting
+def plot_cm(labels, predictions, modelname, p=0.5):
+
+  fig=plt.figure()
   cm = confusion_matrix(labels, predictions > p)
   sns.heatmap(cm, annot=True, fmt="d")
-  plt.title('Confusion matrix @{:.2f}'.format(p))
+  plt.title('Confusion matrix @ {}'.format(modelname))
   plt.ylabel('Actual label')
   plt.xlabel('Predicted label')
 
@@ -319,6 +432,8 @@ def plot_cm(labels, predictions, p=0.5):
   print('Fraudulent Transactions Missed (False Negatives): ', cm[1][0])
   print('Fraudulent Transactions Detected (True Positives): ', cm[1][1])
   print('Total Fraudulent Transactions: ', np.sum(cm[1]))
+  fig.savefig('results_plots/keras_plots/{}_CM.png'.format(modelname))
+  plt.close(fig)
 
 def plot_metrics(history, modtype, colors):
 
@@ -343,10 +458,14 @@ def plot_metrics(history, modtype, colors):
 
         plt.legend()
 
-def makeweightedMLP(X_train, X_test, y_train, y_test):
+
+# model implementation
+def makeweightedMLP(X_train, X_test, y_train, y_test, ds_name):
 
     print("makemlp")
-    X_train, y_train, X_test, y_test, X_val, y_val = prepmlp(X_train, X_test, y_train, y_test)
+
+    #X_train, y_train, X_test, y_test, X_val, y_val = prepmlp(X_train, X_test, y_train, y_test)
+    X_train, y_train, X_test, y_test, X_val, y_val = prep_ent_mlp(X_train, X_test, y_train, y_test)
     xdim = X_train.shape[-1]
     EPOCHS = 100
     BATCH_SIZE = 2000
@@ -376,64 +495,16 @@ def makeweightedMLP(X_train, X_test, y_train, y_test):
         mode='max',
         restore_best_weights=True)
 
-    model = make_MLP(xdim=X_train.shape[-1],metrics=METRICS)
+    model = make_MLP(xdim=X_train.shape[-1], metrics=METRICS)
     model.summary()
 
-    '''
-    baseline_history = model.fit(
-        X_train,
-        y_train,
-        batch_size=BATCH_SIZE,
-        epochs=EPOCHS,
-        callbacks=[early_stopping],
-        validation_data=(X_val, y_val))
-    '''
     # set initial bias
     model = make_MLP(xdim, METRICS,output_bias=initial_bias)
     model.predict(X_train[:10])
     results = model.evaluate(X_train, y_train, batch_size=BATCH_SIZE, verbose=0)
     initial_weights = os.path.join(tempfile.mkdtemp(), 'initial_weights')
     model.save_weights(initial_weights)
-    '''
-    # zero bias versus bias init test
-    model = make_MLP(xdim, METRICS)
-    model.load_weights(initial_weights)
-    model.layers[-1].bias.assign([0.0])
-    zero_bias_history = model.fit(
-        X_train,
-        y_train,
-        batch_size=BATCH_SIZE,
-        epochs=20,
-        validation_data=(X_val, y_val),
-        verbose=0)
 
-    model = make_MLP(xdim,METRICS)
-    model.load_weights(initial_weights)
-    model.layers[-1].bias.assign([0.0])
-    careful_bias_history = model.fit(
-        X_train,
-        y_train,
-        batch_size=BATCH_SIZE,
-        epochs=20,
-        validation_data=(X_val, y_val),
-        verbose=0)
-
-    mpl.rcParams['figure.figsize'] = (12, 10)
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-
-
-
-    train_predictions_baseline = model.predict(X_train, batch_size=BATCH_SIZE)
-    test_predictions_baseline = model.predict(X_test, batch_size=BATCH_SIZE)
-
-    baseline_results = model.evaluate(X_test, y_test,
-                                      batch_size=BATCH_SIZE, verbose=0)
-
-    for name, value in zip(model.metrics_names, baseline_results):
-        print(name, ': ', value)
-    print()
-
-    '''
     weight_for_0 = (1 / neg) * (total) / 2.0
     weight_for_1 = (1 / pos) * (total) / 2.0
 
@@ -452,12 +523,11 @@ def makeweightedMLP(X_train, X_test, y_train, y_test):
         epochs=EPOCHS,
         callbacks=[early_stopping],
         validation_data=(X_val, y_val),
-
         class_weight=class_weight)
 
+    proba_preds_test = weighted_model.predict(X_test, batch_size=BATCH_SIZE)
+    class_preds_test = weighted_model.predict_classes(X_test, batch_size=BATCH_SIZE)
 
-    train_predictions_weighted = weighted_model.predict(X_train, batch_size=BATCH_SIZE)
-    test_predictions_weighted = weighted_model.predict(X_test, batch_size=BATCH_SIZE)
 
     weighted_results = weighted_model.evaluate(X_test, y_test,
                                                batch_size=BATCH_SIZE, verbose=0)
@@ -467,9 +537,18 @@ def makeweightedMLP(X_train, X_test, y_train, y_test):
         print(name, ': ', value)
     print()
 
+    plot_cm(y_test, class_preds_test, modelname='MLP')
+
+    plot_model(model=weighted_model, to_file='results_plots/keras_plots/MLP_model_plot.png', show_shapes=True)
+
+    evaluate_metrics(proba_preds_test, class_preds_test ,y_test, clf_name='MLP',ds_name=ds_name)
+
+    print("THESE ARE MLP PREDS")
+
+
     return weighted_history
 
-def make_weighted2dCNN(X_train, X_test, y_train, y_test):
+def make_weighted2dCNN(X_train, X_test, y_train, y_test, ds_name):
 
     print("make2dcnn")
     print("pre: ", X_train.shape)
@@ -548,11 +627,17 @@ def make_weighted2dCNN(X_train, X_test, y_train, y_test):
         print(name, ': ', value)
     print()
 
+    proba_preds_test = weighted_model.predict(X_test)
+    class_preds_test = weighted_model.predict_classes(X_test)
 
+    plot_cm(y_test, class_preds_test, modelname='2dCNN')
+    plot_model(model=weighted_model, to_file='results_plots/keras_plots/2dCNN_model_plot.png', show_shapes=True)
+
+    evaluate_metrics(proba_preds_test, class_preds_test, y_test, clf_name='2D_CNN', ds_name=ds_name)
 
     return weighted_history
 
-def make_weightedCNN(X_train, X_test, y_train, y_test):
+def make_weightedCNN(X_train, X_test, y_train, y_test, ds_name):
     print("makecnn")
     print("pre: ", X_train.shape)
     X_train, y_train, X_test, y_test, X_val, y_val = prepcnn(X_train, X_test, y_train, y_test)
@@ -583,7 +668,7 @@ def make_weightedCNN(X_train, X_test, y_train, y_test):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor='val_auc',
         verbose=1,
-        patience=10,
+        patience=2,
         mode='max',
         restore_best_weights=True)
 
@@ -617,11 +702,10 @@ def make_weightedCNN(X_train, X_test, y_train, y_test):
         epochs=EPOCHS,
         callbacks=[early_stopping],
         validation_data=(X_val, y_val),
-
         class_weight=class_weight)
 
-    train_predictions_weighted = weighted_model.predict(X_train, batch_size=BATCH_SIZE)
-    test_predictions_weighted = weighted_model.predict(X_test, batch_size=BATCH_SIZE)
+    proba_preds_test = weighted_model.predict(X_test)
+    class_preds_test = weighted_model.predict_classes(X_test)
 
     weighted_results = weighted_model.evaluate(X_test, y_test,
                                                batch_size=BATCH_SIZE, verbose=0)
@@ -632,11 +716,13 @@ def make_weightedCNN(X_train, X_test, y_train, y_test):
         print(name, ': ', value)
     print()
 
+    plot_cm(y_test, class_preds_test, modelname= 'CNN')
+    plot_model(model=weighted_model, to_file='results_plots/keras_plots/CNN_model_plot.png', show_shapes=True)
 
-
+    evaluate_metrics(proba_preds_test, class_preds_test, y_test, clf_name='1D_CNN', ds_name=ds_name)
     return weighted_history
 
-def make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test):
+def make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test, ds_name):
 
     print("make_hybrid_cnn")
 
@@ -644,7 +730,7 @@ def make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test):
 
     X_train_num, y_train, X_test_num, y_test, X_val_num, y_val,X_train_cat, X_test_cat, X_val_cat, n_num,n_cat = prephybrid(X_train, X_test, y_train, y_test,binsize=binsize)
 
-    EPOCHS = 100
+    EPOCHS = 150
     BATCH_SIZE = 2000
 
     METRICS = [
@@ -669,7 +755,7 @@ def make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor='val_auc',
         verbose=1,
-        patience=10,
+        patience=2,
         mode='max',
         restore_best_weights=True)
 
@@ -707,16 +793,31 @@ def make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test):
 
     weighted_results = weighted_model.evaluate([X_test_num, X_test_cat], y_test,
                                                batch_size=BATCH_SIZE, verbose=0)
-
     print("Weighted model: ")
     for name, value in zip(weighted_model.metrics_names, weighted_results):
         print(name, ': ', value)
-    print()
-    print(y_test.size)
-    preds= weighted_model.predict([X_test_num, X_test_cat])
-    print(preds[:10])
-    print(len(preds))
+
+
+    proba_preds_test= weighted_model.predict([X_test_num, X_test_cat])
+
+    proba_preds_test= proba_preds_test[:, 0]
+
+    #class_preds_test = proba_preds_test.argmax(axis=-1)
+    #temp hack
+    class_preds_test=proba_preds_test.round()
+    '''
+    print(proba_preds_test[:10])
+    print("classes")
+    print(class_preds_test[:10])
+    '''
+
+    plot_cm(y_test, class_preds_test, modelname='hybrid')
+    plot_model(model=weighted_model, to_file='results_plots/keras_plots/Hybrid_model_plot.png', show_shapes=True)
+
+    evaluate_metrics(proba_preds_test, class_preds_test, y_test, clf_name='Hybrid', ds_name=ds_name)
 
     return weighted_history
+
+
 
 

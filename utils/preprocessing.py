@@ -8,8 +8,9 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler, OneHotEncoder, StandardScaler, KBinsDiscretizer
-
+from sklearn.preprocessing import RobustScaler, OneHotEncoder, StandardScaler, KBinsDiscretizer, OrdinalEncoder
+from imblearn.over_sampling import RandomOverSampler
+from keras.models import load_model
 
 # from keras.layers import Input, Dense, Activation, Reshape
 # from keras.models import Model
@@ -248,6 +249,7 @@ def MLPpreprocessing_pipeline_onehot(data):
         ]
     )
     categorical_features = data.select_dtypes(include=("bool", "category")).columns
+
     categorical_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
@@ -262,6 +264,40 @@ def MLPpreprocessing_pipeline_onehot(data):
     )
 
     return onehot_preprocessor
+
+
+def EntityPrep(data):
+
+    numeric_features = data.select_dtypes("number").columns
+    numeric_pipeline = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("highVifDropper", HighVIFDropper()),
+            ("scaler", StandardScaler()),
+        ]
+    )
+    categorical_features = data.select_dtypes(include=("bool", "category")).columns
+
+    ##new
+    encoding_cats = [sorted(data[i].unique().tolist()) for i in categorical_features]
+
+    categorical_pipeline = Pipeline(
+        steps=[
+            ("imputer_cat", SimpleImputer(strategy="constant", fill_value="missing")),
+            ("base_encoder", OrdinalEncoder(categories=encoding_cats)),
+            ("encoder", "passthrough"),
+        ]
+    )
+
+    entity_preprocessor = ColumnTransformer(
+        transformers=[
+            ("numerical", numeric_pipeline, numeric_features),
+            ("categorical", categorical_pipeline, categorical_features),
+        ]
+    )
+
+    return entity_preprocessor
+
 
 
 def cnn2dprep_num(data,binsize):
