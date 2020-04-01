@@ -1,0 +1,21 @@
+Scores for train set: 
+              precision    recall  f1-score   support
+
+       False       0.92      0.71      0.80      1332
+        True       0.72      0.92      0.81      1065
+
+    accuracy                           0.81      2397
+   macro avg       0.82      0.82      0.81      2397
+weighted avg       0.83      0.81      0.81      2397
+
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.82      0.58      0.68       417
+        True       0.47      0.74      0.57       208
+
+    accuracy                           0.63       625
+   macro avg       0.64      0.66      0.63       625
+weighted avg       0.70      0.63      0.64       625
+
+model metric values: [0.6689117704868317, 153.0, 174.0, 243.0, 55.0, 0.6335999965667725, 0.4678899049758911, 0.7355769276618958, 0.7170321941375732]
+model metric names: ['loss', 'tp', 'fp', 'tn', 'fn', 'accuracy', 'precision', 'recall', 'auc']
