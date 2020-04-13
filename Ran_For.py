@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.externals import joblib
+
 
 from keras.models import load_model
 from sklearn.pipeline import Pipeline
@@ -13,7 +15,7 @@ from sklearn.preprocessing import (
     OrdinalEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, KFold, cross_val_score
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -66,10 +68,13 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         data_path, descriptor_path
     )
 
+    # oversample minority class to mitigate imbalance issue
     oversampler = RandomOverSampler(sampling_strategy=0.8)
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
     # set up template preprocessing pipelines
+
+    # numeric pipeline with HighVIF and Scaling
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
         steps=[
@@ -79,8 +84,29 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
+    # categorical pipeline with encoding options
     categorical_features = X.select_dtypes(include=("category", "bool")).columns
-    encoding_cats = [sorted(X[i].unique().tolist()) for i in categorical_features]
+
+    # define the possible categories of each variable in the dataset
+    encoding_cats = []
+    for i in categorical_features:
+        category = None
+        try:
+            category = [
+                str(k) for k in sorted([int(j) for j in X[i].unique().tolist()])
+            ]
+        except ValueError:
+            category = X[i].unique().tolist()
+        encoding_cats.append(category)
+
+    # set up a base encoder to allow EntityEmbedder to receive numeric values
+    base_ordinal_encoder = OrdinalEncoder(categories=encoding_cats)
+    encoded_X = base_ordinal_encoder.fit_transform(
+        X.select_dtypes(include=["category", "bool"]).values
+    )
+
+    # define possible categories of encoded variables for one hot encoder
+    post_encoding_cats = [np.unique(col) for col in encoded_X.T]
 
     categorical_pipeline = Pipeline(
         steps=[
@@ -107,13 +133,12 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__n_estimators": [int(x) for x in np.linspace(start=200, stop=1200, num=5)],
+        "clf__n_estimators": [int(x) for x in np.linspace(start=200, stop=1200, num=3)],
         "clf__max_features": ["auto"],
         "clf__max_depth": [5],
         "clf__min_samples_split": [50],
         "clf__min_samples_leaf": [2],
-        "clf__bootstrap": [False, True],
-        "preprocessing__numerical__imputer_num__strategy": ["median", "mean"],
+        "clf__bootstrap": [True],
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [RobustScaler(), StandardScaler()],
         "preprocessing__categorical__base_encoder": [
@@ -121,22 +146,29 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ],
         "preprocessing__categorical__encoder": [
             EntityEmbedder(embedding_model=embedding_model),
-            OneHotEncoder(drop="first"),
-            OneHotEncoder(),
+            OneHotEncoder(categories=post_encoding_cats, drop="first"),
+            OneHotEncoder(categories=post_encoding_cats),
             "passthrough",
         ],
     }
 
+    inner_cv = KFold(n_splits=4, shuffle=True)
+    outer_cv = KFold(n_splits=4, shuffle=True)
+
     # define grid search for classifier
     ranfor_grid = GridSearchCV(
-        ranfor_pipe, param_grid=params, cv=3, scoring=scorers, refit="auc",
+        ranfor_pipe, param_grid=params, cv=inner_cv, scoring=scorers, refit="auc",
     )
 
     # fit pipeline to training data
     ranfor_grid.fit(X_train, y_train)
 
+    nested_score = cross_val_score(ranfor_grid, X_train, y_train, cv=outer_cv)
+
     # generate predictions for test data using fitted model
     preds = ranfor_grid.predict(X_test)
+
+    joblib.dump(ranfor_grid.best_estimator_, f"models/ranfor_{ds_name}.pkl")
 
     # get best score and parameters and classification report for training data
     with open(f"ranfor_results_{ds_name}.txt", "w") as f:
@@ -145,8 +177,10 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         f.write(f"Best scores index: {ranfor_grid.best_index_}\n")
         f.write(
             f"Scores for train set: "
-            f"{classification_report(y_train, ranfor_grid.predict(X_train))}"
+            f"{classification_report(y_train, ranfor_grid.predict(X_train))}\n"
         )
+
+        f.write(f"Nested Scores: {nested_score.mean()}\n")
 
         # get score and classification report for test data
         f.write(f"Scores for test set: {classification_report(y_test, preds)}\n")
@@ -159,7 +193,7 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
 
     # write key cv results to csv file
     pd.DataFrame(ranfor_grid.cv_results_)[key_results].to_csv(
-        f"{ds_name}_ranfor_cv_results.csv"
+        f"ranfor_CV_results_{ds_name}.csv"
     )
 
 
@@ -167,7 +201,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["UK"]:
+    for ds_name in ["bene2"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

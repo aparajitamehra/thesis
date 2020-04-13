@@ -1,0 +1,36 @@
+Best auc_score on train set: 0.854
+Best parameter set: {'clf__C': 70, 'clf__dual': False, 'clf__penalty': 'l2', 'clf__solver': 'lbfgs', 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[[False, True], ['1', '2'], ['1', '2', '3', '4', '5'],
+                           ['1', '2'], ['1', '2'], ['1', '2', '3', '4'],
+                           ['1', '2'],
+                           ['1', '10', '11', '12', '13', '14', '15', '16', '17',
+                            '18', '19', '2', '20', '21', '22', '23', '24', '25',
+                            '26', '27', '3', '4', '5', '6', '7', '8', '9']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': EntityEmbedder(embedding_model=<keras.engine.training.Model object at 0x13942c510>), 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': RobustScaler(copy=True, quantile_range=(25.0, 75.0), with_centering=True,
+             with_scaling=True)}
+Best scores index: 2
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.88      0.87      0.87     23040
+        True       0.84      0.85      0.85     18432
+
+    accuracy                           0.86     41472
+   macro avg       0.86      0.86      0.86     41472
+weighted avg       0.86      0.86      0.86     41472
+
+Nested Scores: nan
+
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.99      0.87      0.93      5760
+        True       0.22      0.88      0.35       240
+
+    accuracy                           0.87      6000
+   macro avg       0.61      0.88      0.64      6000
+weighted avg       0.96      0.87      0.90      6000
+
+f1 score on test set: 0.349
+fbeta_score on test set: 0.676
+AUC of test set: 0.876
+Accuracy of test set: 0.868
+Precision of test set: 0.218
+Recall of test set: 0.883

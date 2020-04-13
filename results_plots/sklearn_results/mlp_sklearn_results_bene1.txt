@@ -1,0 +1,41 @@
+Best auc_score on train set: 0.743
+Best parameter set: {'clf__activation': 'relu', 'clf__batch_size': 'auto', 'clf__hidden_layer_sizes': (64, 32, 1), 'clf__learning_rate': 'adaptive', 'clf__learning_rate_init': 0.01, 'clf__momentum': 0.8, 'clf__solver': 'adam', 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['1', '2', '3', '4', '5', '7'], ['1', '2'],
+                           ['1', '2'], ['1', '2', '3', '4', '6'], ['1', '9'],
+                           ['3', '4', '8', '9'],
+                           ['10', '30', '40', '50', '60', '70', '80', '81'],
+                           ['1', '2', '3', '4', '5', '6', '9'],
+                           ['1', '2', '3']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': OneHotEncoder(categories=[array([0., 1., 2., 3., 4., 5.]), array([0., 1.]),
+                          array([0., 1.]), array([0., 1., 2., 3., 4.]),
+                          array([0., 1.]), array([0., 1., 2., 3.]),
+                          array([0., 1., 2., 3., 4., 5., 6., 7.]),
+                          array([0., 1., 2., 3., 4., 5., 6.]),
+                          array([0., 1., 2.])],
+              drop=None, dtype=<class 'numpy.float64'>, handle_unknown='error',
+              sparse=True), 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': StandardScaler(copy=True, with_mean=True, with_std=True)}
+Best scores index: 7
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.84      0.83      0.84      1665
+        True       0.79      0.81      0.80      1332
+
+    accuracy                           0.82      2997
+   macro avg       0.82      0.82      0.82      2997
+weighted avg       0.82      0.82      0.82      2997
+Nested Scores: 0.7287892919019803
+
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.79      0.76      0.78       417
+        True       0.56      0.60      0.58       208
+
+    accuracy                           0.71       625
+   macro avg       0.67      0.68      0.68       625
+weighted avg       0.71      0.71      0.71       625
+
+f1 score on test set: 0.575
+fbeta_score on test set: 0.592
+AUC of test set: 0.679
+Accuracy of test set: 0.707
+Precision of test set: 0.556
+Recall of test set: 0.596

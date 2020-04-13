@@ -34,7 +34,7 @@ def load_credit_scoring_data(data_path, descriptor_path):
 
     # split train, test data with stratification
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, stratify=y, test_size=0.2, random_state=13
+        X, y, stratify=y, test_size=0.2, random_state=10
     )
 
     return X, y, X_train, X_test, y_train, y_test

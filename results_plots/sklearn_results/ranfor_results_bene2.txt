@@ -1,0 +1,37 @@
+Best auc on train set: 0.738
+Best parameter set: {'clf__bootstrap': True, 'clf__max_depth': 5, 'clf__max_features': 'auto', 'clf__min_samples_leaf': 2, 'clf__min_samples_split': 50, 'clf__n_estimators': 200, 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+                           ['0', '1'], ['1', '2', '3', '4', '6'],
+                           ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+                            '11', '12', '13', '14', '15', '16', '17', '18',
+                            '19', '21', '23', '24', '25', '26', '27', '29'],
+                           ['1', '2', '3', '5', '6', '8'], ['1', '2', '3', '4'],
+                           ['0', '1'], ['1', '2', '3', '4'], ['0', '1'],
+                           ['0', '1']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': 'passthrough', 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': RobustScaler(copy=True, quantile_range=(25.0, 75.0), with_centering=True,
+             with_scaling=True)}
+Best scores index: 14
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.83      0.68      0.75      4026
+        True       0.68      0.83      0.74      3220
+
+    accuracy                           0.75      7246
+   macro avg       0.75      0.76      0.75      7246
+weighted avg       0.76      0.75      0.75      7246
+
+Nested Scores: 0.7357752787731217
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.88      0.67      0.76      1007
+        True       0.50      0.78      0.61       431
+
+    accuracy                           0.70      1438
+   macro avg       0.69      0.72      0.68      1438
+weighted avg       0.77      0.70      0.71      1438
+
+f1 score on test set: 0.611
+fbeta_score on test set: 0.742
+AUC of test set: 0.725
+Accuracy of test set: 0.701
+Precision of test set: 0.501
+Recall of test set: 0.784

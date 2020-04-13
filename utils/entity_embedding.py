@@ -1,4 +1,5 @@
 from keras.callbacks import EarlyStopping
+from keras import metrics
 from keras.layers import (
     Input,
     Dense,
@@ -55,17 +56,19 @@ class EntityEmbedder(BaseEstimator, TransformerMixin):
 
         embedding_trainer = Model(inputs=input_models, outputs=trainer_output)
         embedding_trainer.compile(
-            loss="mean_squared_error", optimizer="Adam", metrics=["mse", "mape"]
+            loss="mean_squared_error",
+            optimizer="Adam",
+            metrics=["mse", "mape", metrics.AUC(name="auc")],
         )
 
         early_stopping = EarlyStopping(
-            monitor="val_loss", patience=50, mode="min", restore_best_weights=True
+            monitor="val_auc", patience=100, mode="max", restore_best_weights=True
         )
 
         embedding_history = embedding_trainer.fit(
             X_train.T.tolist(),
             y_train,
-            epochs=500,
+            epochs=1000,
             batch_size=200,
             validation_data=(X_val.T.tolist(), y_val),
             callbacks=[early_stopping],
@@ -108,14 +111,11 @@ if __name__ == "__main__":
     from sklearn.preprocessing import OrdinalEncoder
     from utils.data import load_credit_scoring_data
 
-    for ds_name in ["bene2"]:
-        data = load_credit_scoring_data(
+    for ds_name in ["bene1", "bene2", "german"]:
+        X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",
         )
-
-        y = data.pop("censor")
-        X = data
 
         categorical_features = X.select_dtypes(include=("category", "bool")).columns
         encoding_cats = [sorted(X[i].unique().tolist()) for i in categorical_features]
