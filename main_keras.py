@@ -45,7 +45,7 @@ def main(data_path, descriptor_path,  embedding_model, ds_name,):
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
+    '''
     weightedMLP = makeweightedMLP(X_train, X_test, y_train, y_test, ds_name)
     plt.figure(ds_name)
     plot_metrics(weightedMLP, "MLP", colors[0])
@@ -53,7 +53,7 @@ def main(data_path, descriptor_path,  embedding_model, ds_name,):
     weightedCNN = make_weightedCNN(X_train, X_test, y_train, y_test, ds_name)
     plot_metrics(weightedCNN, "CNN", colors[1])
 
-
+    '''
     hybrid = make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test, ds_name)
     plt.figure(ds_name)
     plot_metrics(hybrid, "hybrid", colors[2])

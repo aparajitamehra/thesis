@@ -31,8 +31,7 @@ import seaborn as sns
 import os
 import tempfile
 from scipy.sparse import csr_matrix, isspmatrix
-import talos
-from talos.utils import lr_normalizer
+
 from tensorflow.keras.utils import plot_model
 from imblearn.over_sampling import RandomOverSampler
 from keras.models import load_model
@@ -47,7 +46,7 @@ from sklearn.metrics import (
 
 def evaluate_metrics(proba_preds, class_preds, y_test, clf_name, ds_name):
     import csv
-    with open('results_plots/keras_plots/{}_metrics.csv'.format(clf_name), 'a', newline='') as csvfile:
+    with open('results_plots/{}/{}metrics.csv'.format(clf_name, clf_name), 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=' ')
         writer.writerow([ds_name, clf_name, 'AUC', roc_auc_score(y_test, proba_preds)])
         writer.writerow([ds_name, clf_name, 'F1_score', f1_score(y_test, class_preds)])
@@ -57,7 +56,9 @@ def evaluate_metrics(proba_preds, class_preds, y_test, clf_name, ds_name):
         writer.writerow([ds_name, clf_name, 'Precision', precision_score(y_test, class_preds)])
         writer.writerow([ds_name, clf_name, 'Recall', recall_score(y_test, class_preds)])
 
+
 #preprocessors
+
 def prepmlp(X_train, X_test, y_train, y_test):
 
 
@@ -323,6 +324,7 @@ def make_cnn(metrics, output_bias=None):
     model = keras.Sequential([
         keras.layers.Conv1D(filters=8, kernel_size=2, activation='relu', input_shape=(None,1), padding='same', strides=1),
         keras.layers.GlobalMaxPooling1D(),
+
         keras.layers.Dropout(0.1),
         keras.layers.Dense(16, activation='relu'),
         keras.layers.Dense(1, activation='sigmoid', bias_initializer=output_bias),
@@ -356,7 +358,6 @@ def make_MLP(xdim, metrics, output_bias=None):
 
 def tuned_MLP_model(X_train, y_train, X_val, y_val, params):
 
-
     metrics = [
         keras.metrics.TruePositives(name='tp'),
         keras.metrics.FalsePositives(name='fp'),
@@ -389,41 +390,14 @@ def tuned_MLP_model(X_train, y_train, X_val, y_val, params):
     # modify the output model
     return out, model
 
-def make_tuned_MLP(X_train, X_test, y_train, y_test):
-    from keras.optimizers import Adam, Nadam
-    from keras.activations import softmax
-    from keras.losses import categorical_crossentropy, logcosh
-
-    X_train, y_train, X_test, y_test, X_val, y_val = prepmlp(X_train, X_test, y_train, y_test)
-
-    p = {'lr': (0.1, 10, 10),
-         'first_neuron': [4, 8, 16],
-         'batch_size': [2, 3, 4],
-         'epochs': [200],
-         'dropout': (0, 0.40, 10),
-         'optimizer': [Adam, Nadam],
-         'loss': ['binary_crossentropy'],
-         'last_activation': ['softmax'],
-         'weight_regulizer': [None],
-         'activation':['relu', 'elu']}
-
-    scan_object = talos.Scan(x=X_train,
-                             y=y_train,
-                             params=p,
-                             model=tuned_MLP_model,
-                             experiment_name='iris',
-                             fraction_limit=.001)
-
-    scan_object.data.head()
-    return 0
 
 # plotting
-def plot_cm(labels, predictions, modelname, p=0.5):
+def plot_cm(labels, predictions, modelname, dsname, p=0.5):
 
   fig=plt.figure()
   cm = confusion_matrix(labels, predictions > p)
   sns.heatmap(cm, annot=True, fmt="d")
-  plt.title('Confusion matrix @ {}'.format(modelname))
+  plt.title('Confusion matrix {}'.format(modelname))
   plt.ylabel('Actual label')
   plt.xlabel('Predicted label')
 
@@ -432,7 +406,7 @@ def plot_cm(labels, predictions, modelname, p=0.5):
   print('Fraudulent Transactions Missed (False Negatives): ', cm[1][0])
   print('Fraudulent Transactions Detected (True Positives): ', cm[1][1])
   print('Total Fraudulent Transactions: ', np.sum(cm[1]))
-  fig.savefig('results_plots/keras_plots/{}_CM.png'.format(modelname))
+  fig.savefig('results_plots/{}/{}_CM.png'.format(modelname, dsname))
   plt.close(fig)
 
 def plot_metrics(history, modtype, colors):
@@ -555,7 +529,7 @@ def make_weighted2dCNN(X_train, X_test, y_train, y_test, ds_name):
     xdim = X_train.shape[-1]
     binsize=10
     print("Xdim: ",xdim)
-    X_train, y_train, X_test, y_test, X_val, y_val, ncols = prep2dcnn(X_train, X_test, y_train, y_test,binsize=binsize)
+    X_train, y_train, X_test, y_test, X_val, y_val, ncols = prep2dcnn(X_train, X_test, y_train, y_test, binsize=binsize)
     print("post: ", X_train.shape)
     EPOCHS = 100
     BATCH_SIZE = 2000
@@ -691,6 +665,7 @@ def make_weightedCNN(X_train, X_test, y_train, y_test, ds_name):
     print('Weight for class 0: {:.2f}'.format(weight_for_0))
     print('Weight for class 1: {:.2f}'.format(weight_for_1))
 
+
     weighted_model = make_cnn(METRICS)
     weighted_model.summary()
     weighted_model.load_weights(initial_weights)
@@ -817,6 +792,8 @@ def make_weighted_hybrid_CNN(X_train, X_test, y_train, y_test, ds_name):
     evaluate_metrics(proba_preds_test, class_preds_test, y_test, clf_name='Hybrid', ds_name=ds_name)
 
     return weighted_history
+
+
 
 
 
