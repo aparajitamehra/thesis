@@ -1,14 +1,30 @@
+import csv
+
 import keras
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # from keras.optimizers import SGD
-
-from utils.data import load_credit_scoring_data
-from utils.entity_embedding import EntityEmbedder
+from keras.models import load_model
+from keras.models import Sequential
+from keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
 
 from imblearn.over_sampling import RandomOverSampler
 
-from sklearn.metrics import classification_report
+from sklearn.metrics import (
+    classification_report,
+    roc_auc_score,
+    f1_score,
+    fbeta_score,
+    accuracy_score,
+    balanced_accuracy_score,
+    precision_score,
+    recall_score,
+    confusion_matrix,
+    roc_curve,
+    auc,
+)
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
@@ -16,9 +32,8 @@ from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import KBinsDiscretizer
 
-from keras.models import load_model
-from keras.models import Sequential
-from keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
+from utils.data import load_credit_scoring_data
+from utils.entity_embedding import EntityEmbedder
 
 
 # define metrics
@@ -211,19 +226,79 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
         callbacks=[early_stopping_auc],
     )
 
-    preds = model.predict_classes(X_test_final)
+    class_preds = model.predict_classes(X_test_final)
+    proba_preds = model.predict_proba(X_test_final)
 
     model.save(f"models/cnn_emb_{ds_name}.h5")
 
-    # predict and evaluate model on defined metrics
-    with open(f"cnn_emb_results_{ds_name}.txt", "w") as f:
+    with open(f"results_plots/cnn_results/cnn_emb_results_{ds_name}.txt", "w") as f:
         f.write(
             f"Scores for train set: \n"
             f"{classification_report(y_train, model.predict_classes(X_train_final))}\n"
         )
-        f.write(f"Scores for test set: " f"{classification_report(y_test, preds)}\n")
+        f.write(
+            f"Scores for test set: " f"{classification_report(y_test, class_preds)}\n"
+        )
         f.write(f"model metric values: {model.evaluate(X_test_final, y_test)}\n")
         f.write(f"model metric names: {model.metrics_names}\n")
+
+    # get evaluation metrics for test data
+
+    with open(
+        f"results_plots/cnn_results/cnn_emb_metrics.csv", "a", newline=""
+    ) as csvfile:
+        writer = csv.writer(csvfile, delimiter=",")
+        writer.writerow([ds_name, "cnn_emb", "AUC", roc_auc_score(y_test, class_preds)])
+        writer.writerow([ds_name, "cnn_emb", "F1_score", f1_score(y_test, class_preds)])
+        writer.writerow(
+            [ds_name, "cnn_emb", "F_beta", fbeta_score(y_test, class_preds, beta=3)]
+        )
+        writer.writerow(
+            [ds_name, "cnn_emb", "Accuracy", accuracy_score(y_test, class_preds)]
+        )
+        writer.writerow(
+            [
+                ds_name,
+                "cnn_emb",
+                "Balanced_Accuracy",
+                balanced_accuracy_score(y_test, class_preds),
+            ]
+        )
+        writer.writerow(
+            [ds_name, "cnn_emb", "Precision", precision_score(y_test, class_preds)]
+        )
+        writer.writerow(
+            [ds_name, "cnn_emb", "Recall", recall_score(y_test, class_preds)]
+        )
+
+    fig = plt.figure()
+    cm = confusion_matrix(y_test, class_preds > 0.5)
+    sns.heatmap(cm, annot=True, fmt="d")
+    plt.title(f"confusion matrix cnn_emb_{ds_name}")
+    plt.ylabel("Actual label")
+    plt.xlabel("Predicted label")
+
+    fig.savefig(f"results_plots/cnn_results/cnn_emb_{ds_name}_CM.png")
+    plt.close(fig)
+
+    # Compute ROC curve and ROC area for each class
+    fpr, tpr, _ = roc_curve(y_test, proba_preds)
+    roc_auc = auc(fpr, tpr)
+
+    # plot ROC curve
+    fig = plt.figure()
+    plt.plot(
+        fpr, tpr, color="darkorange", lw=2, label="ROC curve (area = %0.2f)" % roc_auc
+    )
+    plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"ROC CNN_Emb_{ds_name}")
+    plt.legend(loc="lower right")
+    fig.savefig(f"results_plots/cnn_results/cnn_emb_{ds_name}_ROC.png")
+    plt.close(fig)
 
 
 if __name__ == "__main__":

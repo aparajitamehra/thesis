@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 
 from imblearn.over_sampling import RandomOverSampler
@@ -9,10 +8,10 @@ from keras.models import load_model
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
-    OneHotEncoder,
     StandardScaler,
-    RobustScaler,
     OrdinalEncoder,
+    RobustScaler,
+    OneHotEncoder,
 )
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
@@ -24,13 +23,18 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     fbeta_score,
-    classification_report,
     balanced_accuracy_score,
 )
 
 from utils.data import load_credit_scoring_data
 from utils.preprocessing import HighVIFDropper
 from utils.entity_embedding import EntityEmbedder
+from utils.sklearn_results_plotting import (
+    evaluate_metrics,
+    plot_roc,
+    plot_cm,
+    best_model_parameters,
+)
 
 
 # define fbeta metric with beta = 3
@@ -49,17 +53,6 @@ scorers = {
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
 }
 
-# define key results to show in cv_results
-key_results = [
-    "mean_test_recall_score",
-    "mean_test_f1_score",
-    "mean_test_fbeta_score",
-    "mean_test_accuracy_score",
-    "mean_test_balanced_accuracy",
-    "mean_test_auc",
-    "mean_test_precision_score",
-]
-
 
 def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
 
@@ -73,8 +66,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
     # set up template preprocessing pipelines
-
-    # numeric pipeline with HighVIF and Scaling
+    # numeric pipeline with imputing, HighVIF and Scaling
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
         steps=[
@@ -88,18 +80,9 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     categorical_features = X.select_dtypes(include=("category", "bool")).columns
 
     # define the possible categories of each variable in the dataset
-    encoding_cats = []
-    for i in categorical_features:
-        category = None
-        try:
-            category = [
-                str(k) for k in sorted([int(j) for j in X[i].unique().tolist()])
-            ]
-        except ValueError:
-            category = X[i].unique().tolist()
-        encoding_cats.append(category)
+    encoding_cats = [X[i].unique().tolist() for i in categorical_features]
 
-    # set up a base encoder to allow EntityEmbedder to receeve numeric values
+    # set up a base encoder to allow EntityEmbedder to receive numeric values
     base_ordinal_encoder = OrdinalEncoder(categories=encoding_cats)
     encoded_X = base_ordinal_encoder.fit_transform(
         X.select_dtypes(include=["category", "bool"]).values
@@ -112,7 +95,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         steps=[
             ("imputer_cat", SimpleImputer(strategy="constant", fill_value="missing")),
             ("base_encoder", OrdinalEncoder(categories=encoding_cats)),
-            ("encoder", EntityEmbedder(embedding_model=embedding_model)),
+            ("encoder", "passthrough"),
         ]
     )
 
@@ -130,7 +113,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
             (
                 "clf",
                 LogisticRegression(
-                    max_iter=10000, class_weight="balanced", warm_start=True
+                    max_iter=10000, warm_start=True, fit_intercept=False
                 ),
             ),
         ]
@@ -140,16 +123,25 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     params = {
         "clf__penalty": ["l2"],
         "clf__dual": [False],
-        "clf__C": [450],
-        "clf__solver": ["liblinear"],
-        "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
-        "preprocessing__numerical__scaler": [RobustScaler(), StandardScaler()],
+        "clf__C": [4, 10],
+        "clf__solver": ["liblinear", "lbfgs"],
+        "preprocessing__numerical__highVifDropper": [
+            HighVIFDropper(threshold=10),
+            "passthrough",
+        ],
+        "preprocessing__numerical__scaler": [
+            StandardScaler(),
+            RobustScaler(),
+            "passthrough",
+        ],
         "preprocessing__categorical__base_encoder": [
-            OrdinalEncoder(categories=encoding_cats)
+            OrdinalEncoder(categories=encoding_cats),
+            "passthrough",
         ],
         "preprocessing__categorical__encoder": [
             EntityEmbedder(embedding_model=embedding_model),
             OneHotEncoder(categories=post_encoding_cats, drop="first"),
+            OneHotEncoder(categories=post_encoding_cats),
             "passthrough",
         ],
     }
@@ -163,47 +155,41 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     )
 
     # fit pipeline to training data
-    logreg_grid.fit(X_train, y_train)
+    logreg_model = logreg_grid.fit(X_train, y_train)
 
+    # calculate nested validation scores
     nested_score = cross_val_score(logreg_grid, X_train, y_train, cv=outer_cv)
 
     # generate predictions for test data using fitted model
-    preds = logreg_grid.predict(X_test)
+    class_preds = logreg_model.predict(X_test)
+    proba_preds = logreg_model.predict_proba(X_test)
+    # y_score = logreg_model.decision_function(X_test)
 
-    joblib.dump(logreg_grid.best_estimator_, f"models/logreg_{ds_name}.pkl")
+    # save best model
+    joblib.dump(logreg_model.best_estimator_, f"models/logreg_{ds_name}.pkl")
 
-    # get best score and parameters and classification report for training data
-    with open(f"logreg_results_{ds_name}.txt", "w") as f:
-        f.write(f"Best auc_score on train set: {logreg_grid.best_score_:.3f}\n")
-        f.write(f"Best parameter set: {logreg_grid.best_params_}\n")
-        f.write(f"Best scores index: {logreg_grid.best_index_}\n")
-        f.write(
-            f"Scores for train set: "
-            f"{classification_report(y_train, logreg_grid.predict(X_train))}\n"
-        )
-
-        f.write(f"Nested Scores: {nested_score.mean()}\n\n")
-
-        # get score and classification report for test data
-        f.write(f"Scores for test set: {classification_report(y_test, preds)}\n")
-        f.write(f"f1 score on test set: {f1_score(y_test, preds):.3f}\n")
-        f.write(f"fbeta_score on test set: {f2(y_test, preds):.3f}\n")
-        f.write(f"AUC of test set: {roc_auc_score(y_test, preds):.3f}\n")
-        f.write(f"Accuracy of test set: {accuracy_score(y_test, preds):.3f}\n")
-        f.write(f"Precision of test set: {precision_score(y_test, preds):.3f}\n")
-        f.write(f"Recall of test set: {recall_score(y_test, preds):.3f}\n")
-
-    # write key cv results to csv file
-    pd.DataFrame(logreg_grid.cv_results_)[key_results].to_csv(
-        f"logreg_CV_results_{ds_name}.csv"
+    # get best parameters and classification report for training data
+    best_model_parameters(
+        X_train,
+        y_train,
+        nested_score=nested_score,
+        clf_name="logreg",
+        model=logreg_model,
+        ds_name=ds_name,
     )
+    # get evaluation metrics for test data
+    evaluate_metrics(y_test, class_preds, clf_name="logreg", ds_name=ds_name)
+    # plot confusion matrix
+    plot_cm(y_test, class_preds, modelname=f"logreg_{ds_name}")
+    # plot roc
+    plot_roc(y_test, proba_preds, modelname=f"logreg_{ds_name}")
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["bene2"]:
+    for ds_name in ["german"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

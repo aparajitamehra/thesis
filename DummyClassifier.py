@@ -12,6 +12,7 @@ from sklearn.metrics import (
     fbeta_score,
     classification_report,
     balanced_accuracy_score,
+    average_precision_score,
 )
 
 
@@ -24,10 +25,11 @@ scorers = {
     "recall_score": make_scorer(recall_score),
     "f1_score": make_scorer(f1_score),
     "accuracy_score": make_scorer(accuracy_score),
-    # "precision_score": make_scorer(precision_score),
+    "precision_score": make_scorer(precision_score),
     "fbeta_score": make_scorer(f2),
     "auc": make_scorer(roc_auc_score),
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
+    "average_precision": make_scorer(average_precision_score),
 }
 
 
@@ -42,7 +44,11 @@ def main_dummy(data_path, descriptor_path, ds_name):
         params = {"strategy": ["most_frequent"]}
 
         griddummy = GridSearchCV(
-            estimator=classifier, param_grid=params, cv=5, scoring=scorers, refit="auc",
+            estimator=classifier,
+            param_grid=params,
+            cv=5,
+            scoring=scorers,
+            refit="average_precision",
         )
 
         return griddummy
@@ -69,6 +75,9 @@ def main_dummy(data_path, descriptor_path, ds_name):
         f.write(f"Accuracy of test set: {accuracy_score(y_test, preds):.3f}\n")
         f.write(f"Precision of test set: {precision_score(y_test, preds):.3f}\n")
         f.write(f"Recall of test set: {recall_score(y_test, preds):.3f}\n")
+        f.write(
+            f"Average Precision of test set: {average_precision_score(y_test, preds)}\n"
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,42 @@
+Best auc_score on train set: 0.804
+Best parameter set: {'clf__booster': 'gbtree', 'clf__colsample_bytree': 0.8, 'clf__learning_rate': 0.05, 'clf__max_depth': 4, 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['A11', 'A12', 'A13', 'A14'],
+                           ['A30', 'A31', 'A32', 'A33', 'A34'],
+                           ['A40', 'A41', 'A410', 'A42', 'A43', 'A44', 'A45',
+                            'A46', 'A48', 'A49'],
+                           ['A61', 'A62', 'A63', 'A64', 'A65'],
+                           ['A71', 'A72', 'A73', 'A74', 'A75'],
+                           ['A91', 'A92', 'A93', 'A94'],
+                           ['A101', 'A102', 'A103'],
+                           ['A121', 'A122', 'A123', 'A124'],
+                           ['A141', 'A142', 'A143'], ['A151', 'A152', 'A153'],
+                           ['A171', 'A172', 'A173', 'A174'], ['A191', 'A192'],
+                           ['A201', 'A202']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': EntityEmbedder(embedding_model=<keras.engine.training.Model object at 0x131642350>), 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': RobustScaler(copy=True, quantile_range=(25.0, 75.0), with_centering=True,
+             with_scaling=True)}
+Best scores index: 52
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.93      0.91      0.92       560
+        True       0.89      0.91      0.90       448
+
+    accuracy                           0.91      1008
+   macro avg       0.91      0.91      0.91      1008
+weighted avg       0.91      0.91      0.91      1008
+Nested Scores: 0.7993249619890946
+
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.83      0.80      0.81       140
+        True       0.57      0.62      0.59        60
+
+    accuracy                           0.74       200
+   macro avg       0.70      0.71      0.70       200
+weighted avg       0.75      0.74      0.75       200
+
+f1 score on test set: 0.592
+fbeta_score on test set: 0.612
+AUC of test set: 0.708
+Accuracy of test set: 0.745
+Precision of test set: 0.569
+Recall of test set: 0.617
+Average Precision of test set: 0.46602564102564104
