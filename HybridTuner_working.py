@@ -95,9 +95,16 @@ def buildtunedhybrid(hp):
     model = tf.keras.Model(inputs=[num_input, cat_input], outputs=output)
 
     model.compile(loss='binary_crossentropy',
-                  optimizer=tf.keras.optimizers.Adam(hp.Float('learning_rate', 1e-4, 1e-2, sampling='log')),
+                  optimizer=keras.optimizers.Adam(
+                      hp.Choice('learning_rate',
+                                values=[1e-2, 1e-3, 1e-4, 1e-5])),
                   metrics=['accuracy', tf.keras.metrics.AUC(name='auc')])
 
+    '''
+    model.compile(loss='binary_crossentropy',
+                  optimizer=tf.keras.optimizers.Adam(hp.Float('learning_rate', 1e-4, 1e-2, sampling='log')),
+                  metrics=['accuracy', tf.keras.metrics.AUC(name='auc')])
+    '''
     return model
 
 
@@ -110,7 +117,7 @@ def main(data_path, descriptor_path,  embedding_model, ds_name):
     clf = "Multi-Input"
 
     X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
-        data_path, descriptor_path)
+        data_path, descriptor_path, rearrange=True)
     oversampler = RandomOverSampler(sampling_strategy=0.8)
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
@@ -123,13 +130,12 @@ def main(data_path, descriptor_path,  embedding_model, ds_name):
     tuner = RandomSearch(
         buildtunedhybrid,
         objective=Objective("val_auc", direction="max"),
-        max_trials=1,
-        executions_per_trial =1,
+        max_trials=100,
+        executions_per_trial =2,
         directory='results_plots/{}'.format(clf),
-        project_name='thesis_tuning'
+        project_name='{}_tuning'.format(ds_name)
 
     )
-
 
     '''
 
@@ -150,7 +156,7 @@ def main(data_path, descriptor_path,  embedding_model, ds_name):
     '''
     tuner.search([X_train_num, X_train_cat], y_train,
                  validation_data= ([X_val_num,X_val_cat], y_val),
-                 epochs=10,
+                 epochs=100,
                  callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_auc',
                                                             patience=10)],
                  )
@@ -175,10 +181,9 @@ def main(data_path, descriptor_path,  embedding_model, ds_name):
     evaluate_metrics(proba_preds_test, class_preds_test, y_test, clf_name=clf, ds_name=ds_name)
 
 
-
 if __name__ == "__main__":
     from pathlib import Path
-    for ds_name in ["UK"]:
+    for ds_name in ["UK","bene1","bene2","german"]:
         print(ds_name)
 
         embedding_model = None

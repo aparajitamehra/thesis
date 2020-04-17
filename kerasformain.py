@@ -47,14 +47,17 @@ from sklearn.metrics import (
 def evaluate_metrics(proba_preds, class_preds, y_test, clf_name, ds_name):
     import csv
     with open('results_plots/{}/{}metrics.csv'.format(clf_name, clf_name), 'a', newline='') as csvfile:
-        writer = csv.writer(csvfile, delimiter=' ')
+        writer = csv.writer(csvfile, delimiter=',')
         writer.writerow([ds_name, clf_name, 'AUC', roc_auc_score(y_test, proba_preds)])
-        writer.writerow([ds_name, clf_name, 'F1_score', f1_score(y_test, class_preds)])
-        writer.writerow([ds_name, clf_name, 'F_beta', fbeta_score(y_test, class_preds, beta=3)])
+        writer.writerow([ds_name, clf_name, 'F1 score', f1_score(y_test, class_preds)])
+        writer.writerow([ds_name, clf_name, 'F beta', fbeta_score(y_test, class_preds, beta=3)])
         writer.writerow([ds_name, clf_name, 'Accuracy', accuracy_score(y_test, class_preds)])
-        writer.writerow([ds_name, clf_name, 'Balanced_Accuracy', balanced_accuracy_score(y_test, class_preds)])
+        writer.writerow([ds_name, clf_name, 'Balanced Accuracy', balanced_accuracy_score(y_test, class_preds)])
         writer.writerow([ds_name, clf_name, 'Precision', precision_score(y_test, class_preds)])
         writer.writerow([ds_name, clf_name, 'Recall', recall_score(y_test, class_preds)])
+
+
+
 
 
 #preprocessors

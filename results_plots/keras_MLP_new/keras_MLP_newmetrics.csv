@@ -1,0 +1,28 @@
+UK,keras_MLP_new,AUC,0.9063422309027779
+UK,keras_MLP_new,F1 score,0.2941176470588235
+UK,keras_MLP_new,F beta,0.5627009646302251
+UK,keras_MLP_new,Accuracy,0.86
+UK,keras_MLP_new,Balanced Accuracy,0.7973090277777777
+UK,keras_MLP_new,Precision,0.18421052631578946
+UK,keras_MLP_new,Recall,0.7291666666666666
+bene1,keras_MLP_new,AUC,0.7529514849658735
+bene1,keras_MLP_new,F1 score,0.5783664459161147
+bene1,keras_MLP_new,F beta,0.6188001889466226
+bene1,keras_MLP_new,Accuracy,0.6944
+bene1,keras_MLP_new,Balanced Accuracy,0.6782131986718318
+bene1,keras_MLP_new,Precision,0.5346938775510204
+bene1,keras_MLP_new,Recall,0.6298076923076923
+bene2,keras_MLP_new,AUC,0.7735296082872329
+bene2,keras_MLP_new,F1 score,0.5849056603773585
+bene2,keras_MLP_new,F beta,0.6876663708961847
+bene2,keras_MLP_new,Accuracy,0.694019471488178
+bene2,keras_MLP_new,Balanced Accuracy,0.7012375091298267
+bene2,keras_MLP_new,Precision,0.492845786963434
+bene2,keras_MLP_new,Recall,0.7192575406032483
+german,keras_MLP_new,AUC,0.7396428571428572
+german,keras_MLP_new,F1 score,0.49090909090909096
+german,keras_MLP_new,F beta,0.4576271186440678
+german,keras_MLP_new,Accuracy,0.72
+german,keras_MLP_new,Balanced Accuracy,0.6428571428571429
+german,keras_MLP_new,Precision,0.54
+german,keras_MLP_new,Recall,0.45

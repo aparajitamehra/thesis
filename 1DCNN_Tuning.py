@@ -85,35 +85,37 @@ def build_tuned_cnn(hp):
                       hp.Choice('learning_rate',
                                 values=[1e-2, 1e-3, 1e-4, 1e-5])),
                   loss='binary_crossentropy',
-                  metrics=['accuracy', tf.keras.metrics.AUC(name='auc')]
+                  metrics=['accuracy', tf.keras.metrics.AUC(name='auc')],
+
                   )
     return model
 
 
 def main(data_path, descriptor_path, embedding_model, ds_name):
 
-    clf = "1D_CNN"
+    clf = "1D CNN"
 
     X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
-        data_path, descriptor_path)
+        data_path, descriptor_path, rearrange=True)
 
     oversampler = RandomOverSampler(sampling_strategy=0.8)
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
+
 
     X_train, y_train, X_test, y_test, X_val, y_val = prepcnn(X_train, X_test, y_train, y_test)
 
     tuner = RandomSearch(
         build_tuned_cnn,
         objective=Objective("val_auc", direction="max"),
-        max_trials=1,
+        max_trials=100,
         executions_per_trial=2,
         directory='results_plots/{}'.format(clf),
-        project_name='thesis_tuning'
+        project_name='{}_tuning'.format(ds_name)
     )
 
     tuner.search(X_train, y_train,
                  validation_data=(X_val, y_val),
-                 epochs=10,
+                 epochs=100,
                  callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_auc',
                                                              patience=10)],
                  )
@@ -139,7 +141,7 @@ def main(data_path, descriptor_path, embedding_model, ds_name):
 if __name__ == "__main__":
     from pathlib import Path
 
-    for ds_name in ["UK"]:
+    for ds_name in ["UK", "bene1", "bene2","german"]:
         print(ds_name)
 
         embedding_model = None

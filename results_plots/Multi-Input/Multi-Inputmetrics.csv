@@ -1,7 +1,28 @@
-UK Multi-Input AUC 0.9151294849537037
-UK Multi-Input F1_score 0.28774928774928776
-UK Multi-Input F_beta 0.6077015643802648
-UK Multi-Input Accuracy 0.8333333333333334
-UK Multi-Input Balanced_Accuracy 0.8373263888888889
-UK Multi-Input Precision 0.17353951890034364
-UK Multi-Input Recall 0.8416666666666667
+UK,Multi-Input,AUC,0.8998256655092594
+UK,Multi-Input,F1 score,0.2776957163958641
+UK,Multi-Input,F beta,0.5742211362248014
+UK,Multi-Input,Accuracy,0.837
+UK,Multi-Input,Balanced Accuracy,0.8112847222222221
+UK,Multi-Input,Precision,0.1687612208258528
+UK,Multi-Input,Recall,0.7833333333333333
+bene1,Multi-Input,AUC,0.7330462553034496
+bene1,Multi-Input,F1 score,0.5875486381322957
+bene1,Multi-Input,F beta,0.6932966023875115
+bene1,Multi-Input,Accuracy,0.6608
+bene1,Multi-Input,Balanced Accuracy,0.6771294502859251
+bene1,Multi-Input,Precision,0.4934640522875817
+bene1,Multi-Input,Recall,0.7259615384615384
+bene2,Multi-Input,AUC,0.754852920507722
+bene2,Multi-Input,F1 score,0.5768194070080862
+bene2,Multi-Input,F beta,0.7037930278447709
+bene2,Multi-Input,Accuracy,0.672461752433936
+bene2,Multi-Input,Balanced Accuracy,0.6931445081644267
+bene2,Multi-Input,Precision,0.4706744868035191
+bene2,Multi-Input,Recall,0.7447795823665894
+german,Multi-Input,AUC,0.7663095238095238
+german,Multi-Input,F1 score,0.5925925925925926
+german,Multi-Input,F beta,0.6504065040650406
+german,Multi-Input,Accuracy,0.725
+german,Multi-Input,Balanced Accuracy,0.7083333333333333
+german,Multi-Input,Precision,0.5333333333333333
+german,Multi-Input,Recall,0.6666666666666666

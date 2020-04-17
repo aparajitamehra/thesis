@@ -46,7 +46,7 @@ from sklearn.metrics import (
 
 from keras.models import model_from_json
 
-from kerastuner.tuners import RandomSearch
+from kerastuner.tuners import RandomSearch, BayesianOptimization
 
 from kerasformain import prepmlp, plot_cm, evaluate_metrics, prep_ent_mlp
 import time
@@ -59,15 +59,8 @@ def buildtunedMLP(hp):
     model = keras.Sequential()
     model.add(tf.keras.Input(shape=(xdim, ) ))
 
-    model.add(keras.layers.Dense(units=hp.Int('units',
-                                              min_value=2,
-                                              max_value=16,
-                                              step=2),
-                                 activation='relu'))
-
-
     for i in range(hp.Int('nr_layers', 1, 3)):
-        model.add(keras.layers.Dense(units=hp.Int('units',
+        model.add(keras.layers.Dense(units=hp.Int('units_'+ str(i+1),
                                     min_value=2,
                                     max_value=16,
                                     step=2),
@@ -78,7 +71,7 @@ def buildtunedMLP(hp):
     model.compile(
                 optimizer=keras.optimizers.Adam(
                     hp.Choice('learning_rate',
-                                    values=[1e-2, 1e-3, 1e-4])),
+                                    values=[1e-1,1e-2, 1e-3, 1e-4])),
                 loss='binary_crossentropy',
                 metrics=['accuracy', tf.keras.metrics.AUC(name='auc')]
 
@@ -89,14 +82,14 @@ def buildtunedMLP(hp):
 
 def main(data_path, descriptor_path,  embedding_model, ds_name):
 
-    clf = "keras_MLP"
+    clf = "keras_MLP_new"
 
     global xdim
 
 
     X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
         data_path, descriptor_path)
-    oversampler = RandomOverSampler(sampling_strategy=0.8)
+    oversampler = RandomOverSampler(sampling_strategy=0.8, random_state=42)
 
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
@@ -111,29 +104,52 @@ def main(data_path, descriptor_path,  embedding_model, ds_name):
     tuner = RandomSearch(
         buildtunedMLP,
         objective= Objective("val_auc", direction="max"),
-        max_trials=1,
-        executions_per_trial =1,
+        max_trials=2,
+        executions_per_trial =2,
         directory='results_plots/{}'.format(clf),
-        project_name='thesis_tuning'
+        project_name='{}_tuning'.format(ds_name)
     )
-
 
     tuner.search(X_train, y_train,
                  validation_data= (X_val, y_val),
-                 epochs=10,
+                 epochs=100,
                  callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_auc',
                                                             patience=10)],
                  )
-
-
     best_model = tuner.get_best_models(1)[0]
 
+
+
+    '''
+    bayesian = BayesianOptimization(
+        buildtunedMLP,
+        objective=Objective("val_auc", direction="max"),
+        max_trials=100,
+        executions_per_trial=2,
+        seed = 10,
+        directory='results_plots/{}bayesian'.format(clf),
+        project_name='{}bayesian_tuning'.format(ds_name)
+    )
+
+    bayesian.search(X_train, y_train,
+                 validation_data=(X_val, y_val),
+                 epochs=100,
+                 callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_auc',
+                                                             patience=10)],
+                 )
+
+    best_model = bayesian.get_best_models(1)[0]
+    
+    '''
     model_json = best_model.to_json()
+
+
 
     with open("results_plots/{}/{}_model.json".format(clf, ds_name), "w") as json_file:
         json_file.write(model_json)
     # serialize weights to HDF5
     best_model.save_weights('results_plots/{}/{}_model.h5'.format(clf, ds_name))
+
 
     proba_preds_test = best_model.predict(X_test)
     class_preds_test = best_model.predict_classes(X_test)
@@ -141,13 +157,14 @@ def main(data_path, descriptor_path,  embedding_model, ds_name):
     plot_cm(y_test, class_preds_test, modelname=clf, dsname=ds_name)
     plot_model(model=best_model, to_file='results_plots/{}/{}_model_plot.png'.format(clf, ds_name), show_shapes=True)
 
+
     evaluate_metrics(proba_preds_test, class_preds_test, y_test, clf_name=clf, ds_name=ds_name)
 
 
 
 if __name__ == "__main__":
     from pathlib import Path
-    for ds_name in ["UK"]:
+    for ds_name in ["UK", "bene1", "bene2", "german"]:
         print(ds_name)
 
         embedding_model = None
