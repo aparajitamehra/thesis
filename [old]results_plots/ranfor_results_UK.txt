@@ -1,0 +1,27 @@
+Best auc on train set: 0.875
+Best parameter set: {'clf__criterion': 'gini', 'clf__max_depth': 7, 'clf__min_samples_leaf': 1, 'clf__min_samples_split': 2, 'clf__n_estimators': 700, 'preprocessing__categorical__base_encoder': 'passthrough', 'preprocessing__categorical__encoder': 'passthrough', 'preprocessing__numerical__highVifDropper': HighVIFDropper(threshold=10), 'preprocessing__numerical__scaler': 'passthrough'}
+Best scores index: 111
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.88      0.91      0.89     23040
+        True       0.88      0.85      0.86     18432
+
+    accuracy                           0.88     41472
+   macro avg       0.88      0.88      0.88     41472
+weighted avg       0.88      0.88      0.88     41472
+
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.99      0.90      0.94      5760
+        True       0.24      0.76      0.36       240
+
+    accuracy                           0.89      6000
+   macro avg       0.61      0.83      0.65      6000
+weighted avg       0.96      0.89      0.92      6000
+
+f1 score on test set: 0.360
+fbeta_score on test set: 0.621
+AUC of test set: 0.828
+Accuracy of test set: 0.892
+Precision of test set: 0.236
+Recall of test set: 0.758

@@ -1,4 +1,4 @@
-Best auc on train set: 0.500
+Best auc on train set: 0.300
 Best parameter set: {'strategy': 'most_frequent'}
 Best scores index: 0
 Scores for train set:               precision    recall  f1-score   support
@@ -25,3 +25,4 @@ AUC of test set: 0.500
 Accuracy of test set: 0.700
 Precision of test set: 0.000
 Recall of test set: 0.000
+Average Precision of test set: 0.3

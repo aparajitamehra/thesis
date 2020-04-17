@@ -1,0 +1,35 @@
+Best auc_score on train set: 0.893
+Best parameter set: {'clf__booster': 'gbtree', 'clf__colsample_bytree': 0.8, 'clf__learning_rate': 0.05, 'clf__max_depth': 4, 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[[False, True], ['1', '2'], ['1', '2', '3', '4', '5'],
+                           ['1', '2'], ['1', '2'], ['1', '2', '3', '4'],
+                           ['1', '2'],
+                           ['1', '10', '11', '12', '13', '14', '15', '16', '17',
+                            '18', '19', '2', '20', '21', '22', '23', '24', '25',
+                            '26', '27', '3', '4', '5', '6', '7', '8', '9']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': EntityEmbedder(embedding_model=<keras.engine.training.Model object at 0x138aa6050>), 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': StandardScaler(copy=True, with_mean=True, with_std=True)}
+Best scores index: 51
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.89      0.93      0.91     23040
+        True       0.90      0.86      0.88     18432
+
+    accuracy                           0.90     41472
+   macro avg       0.90      0.89      0.90     41472
+weighted avg       0.90      0.90      0.90     41472
+Nested Scores: 0.8923446653969773
+
+Scores for test set:               precision    recall  f1-score   support
+
+       False       0.99      0.92      0.96      5760
+        True       0.31      0.85      0.46       240
+
+    accuracy                           0.92      6000
+   macro avg       0.65      0.88      0.71      6000
+weighted avg       0.97      0.92      0.94      6000
+
+f1 score on test set: 0.459
+fbeta_score on test set: 0.724
+AUC of test set: 0.885
+Accuracy of test set: 0.920
+Precision of test set: 0.315
+Recall of test set: 0.846
+Average Precision of test set: 0.27237467700258394
