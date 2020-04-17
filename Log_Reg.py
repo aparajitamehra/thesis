@@ -110,21 +110,17 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     logreg_pipe = Pipeline(
         [
             ("preprocessing", preprocessor),
-            (
-                "clf",
-                LogisticRegression(
-                    max_iter=10000, warm_start=True, fit_intercept=False
-                ),
-            ),
+            ("clf", LogisticRegression(max_iter=100000),),
         ]
     )
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
         "clf__penalty": ["l2"],
+        "clf__C": [4],
+        "clf__fit_intercept": [True],
         "clf__dual": [False],
-        "clf__C": [4, 10],
-        "clf__solver": ["liblinear", "lbfgs"],
+        "clf__solver": ["liblinear"],
         "preprocessing__numerical__highVifDropper": [
             HighVIFDropper(threshold=10),
             "passthrough",
@@ -141,7 +137,6 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         "preprocessing__categorical__encoder": [
             EntityEmbedder(embedding_model=embedding_model),
             OneHotEncoder(categories=post_encoding_cats, drop="first"),
-            OneHotEncoder(categories=post_encoding_cats),
             "passthrough",
         ],
     }
@@ -163,7 +158,6 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     # generate predictions for test data using fitted model
     class_preds = logreg_model.predict(X_test)
     proba_preds = logreg_model.predict_proba(X_test)
-    # y_score = logreg_model.decision_function(X_test)
 
     # save best model
     joblib.dump(logreg_model.best_estimator_, f"models/logreg_{ds_name}.pkl")
@@ -172,24 +166,28 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     best_model_parameters(
         X_train,
         y_train,
+        y_test,
+        class_preds,
         nested_score=nested_score,
         clf_name="logreg",
         model=logreg_model,
         ds_name=ds_name,
     )
     # get evaluation metrics for test data
-    evaluate_metrics(y_test, class_preds, clf_name="logreg", ds_name=ds_name)
+    evaluate_metrics(
+        y_test, class_preds, proba_preds, clf_name="logreg", ds_name=ds_name
+    )
     # plot confusion matrix
     plot_cm(y_test, class_preds, modelname=f"logreg_{ds_name}")
     # plot roc
-    plot_roc(y_test, proba_preds, modelname=f"logreg_{ds_name}")
+    plot_roc(y_test, class_preds, proba_preds, modelname=f"logreg_{ds_name}")
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["german"]:
+    for ds_name in ["UK"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

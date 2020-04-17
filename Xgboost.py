@@ -14,7 +14,11 @@ from sklearn.preprocessing import (
     OrdinalEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV, KFold, cross_val_score
+from sklearn.model_selection import (
+    GridSearchCV,
+    KFold,
+    cross_val_score,
+)
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -113,12 +117,8 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
                 "clf",
                 XGBClassifier(
                     verbosity=0,
-                    scale_pos_weight=1,
-                    subsample=0.8,
                     objective="binary:logistic",
-                    reg_alpha=0.3,
                     max_delta_step=1,
-                    min_child_weight=1,
                     eval_metric="auc",
                 ),
             ),
@@ -127,10 +127,16 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__max_depth": [3, 4],
-        "clf__learning_rate": [0.05, 0.03],
+        "clf__max_depth": [4],
+        "clf__learning_rate": [0.05],
+        "clf__subsample": [1],
+        "clf__scale_pos_weight": [1],
+        "clf__min_child_weight": [3],
         "clf__booster": ["gbtree"],
+        "clf__reg_lambda": [1],
+        "clf__gamma": [0.1],
         "clf__colsample_bytree": [0.8],
+        "clf__n_estimators": [250, 300],
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
             StandardScaler(),
@@ -154,7 +160,12 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
 
     # define grid search for classifier
     xgboost_grid = GridSearchCV(
-        xgboost_pipe, param_grid=params, cv=inner_cv, scoring=scorers, refit="auc",
+        xgboost_pipe,
+        param_grid=params,
+        cv=inner_cv,
+        scoring=scorers,
+        refit="auc",
+        verbose=1,
     )
 
     # fit pipeline to training data
@@ -166,7 +177,6 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     # generate predictions for test data using fitted model
     class_preds = xgboost_model.predict(X_test)
     proba_preds = xgboost_model.predict_proba(X_test)
-    # y_score = xgboost_model.decision_function(X_test)
 
     # save best model
     joblib.dump(xgboost_model.best_estimator_, f"models/xgboost_{ds_name}.pkl")
@@ -175,24 +185,28 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     best_model_parameters(
         X_train,
         y_train,
+        y_test,
+        class_preds,
         nested_score=nested_score,
         clf_name="xgboost",
         model=xgboost_model,
         ds_name=ds_name,
     )
     # get evaluation metrics for test data
-    evaluate_metrics(y_test, class_preds, clf_name="xgboost", ds_name=ds_name)
+    evaluate_metrics(
+        y_test, class_preds, proba_preds, clf_name="xgboost", ds_name=ds_name
+    )
     # plot confusion matrix
     plot_cm(y_test, class_preds, modelname=f"xgboost_{ds_name}")
     # plot roc
-    plot_roc(y_test, proba_preds, modelname=f"xgboost_{ds_name}")
+    plot_roc(y_test, class_preds, proba_preds, modelname=f"xgboost_{ds_name}")
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each data set:
-    for ds_name in ["UK"]:
+    for ds_name in ["bene2"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

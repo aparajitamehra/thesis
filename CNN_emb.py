@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# from keras.optimizers import SGD
 from keras.models import load_model
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
@@ -23,8 +22,8 @@ from sklearn.metrics import (
     recall_score,
     confusion_matrix,
     roc_curve,
-    auc,
 )
+
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
@@ -51,16 +50,8 @@ METRICS = [
 np.random.seed = 50
 
 early_stopping_auc = keras.callbacks.EarlyStopping(
-    monitor="val_auc", patience=50, mode="max", restore_best_weights=True
+    monitor="val_auc", patience=100, mode="max", restore_best_weights=True
 )
-
-# early_stopping_fn = keras.callbacks.EarlyStopping(
-#     monitor="val_fn", patience=50, mode="min", restore_best_weights=True
-# )
-#
-# early_stopping_fp = keras.callbacks.EarlyStopping(
-#     monitor="val_tp", patience=50, mode="min", restore_best_weights=True
-# )
 
 
 # main cnn function
@@ -68,7 +59,7 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
 
     # load and split data
     X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
-        data_path, descriptor_path
+        data_path, descriptor_path, rearrange="Emb"
     )
 
     oversampler = RandomOverSampler(sampling_strategy=0.8)
@@ -162,15 +153,15 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
     instances_val = np.array(instances_val)
     instances_test = np.array(instances_test)
 
-    # shuffle columns of instance matrices to change spatial relationships
-    all_instances = list(zip(instances_train.T, instances_val.T, instances_test.T))
-    np.random.shuffle(all_instances)
-    instances_train, instances_val, instances_test = zip(*all_instances)
-
-    # reformat instances back to arrays after shuffle
-    instances_train = np.array(instances_train).T
-    instances_val = np.array(instances_val).T
-    instances_test = np.array(instances_test).T
+    # # shuffle columns of instance matrices to change spatial relationships
+    # all_instances = list(zip(instances_train.T, instances_val.T, instances_test.T))
+    # np.random.shuffle(all_instances)
+    # instances_train, instances_val, instances_test = zip(*all_instances)
+    #
+    # # reformat instances back to arrays after shuffle
+    # instances_train = np.array(instances_train).T
+    # instances_val = np.array(instances_val).T
+    # instances_test = np.array(instances_test).T
 
     # reshape train, test and validation sets to make them appropriate input to CNN
     X_train_final = instances_train.reshape(n_inst_train, n_bins, n_var, 1)
@@ -192,7 +183,7 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
     model = Sequential()  # add model layers
     model.add(
         Conv2D(
-            10,
+            filters=6,
             kernel_size=(4, 8),
             padding="same",
             activation="relu",
@@ -203,17 +194,16 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
     )
     model.add(Dropout(0.2))
     model.add(MaxPooling2D()),
-    model.add(Conv2D(10, kernel_size=(3, 4), activation="relu"))
-    model.add(MaxPooling2D()),
-    model.add(Dropout(0.2)),
+    # model.add(Conv2D(filters=10, kernel_size=(3,4), activation="relu"))
+    # model.add(MaxPooling2D()),
+    # model.add(Dropout(0.2)),
     model.add(Flatten())
+    model.add(Dense(8, activation="relu"))
     model.add(Dense(1, activation="sigmoid"))
 
     adam = keras.optimizers.Adam(
-        learning_rate=0.02, beta_1=0.95, beta_2=0.999, amsgrad=True
+        learning_rate=0.05, beta_1=0.95, beta_2=0.999, amsgrad=True
     )
-    # sgd = SGD(lr=0.006, momentum=0.7, nesterov=True)
-    # rmsprop = keras.optimizers.RMSprop(lr=0.01, rho=0.9)
 
     model.compile(optimizer=adam, loss="binary_crossentropy", metrics=METRICS)
 
@@ -230,6 +220,7 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
     proba_preds = model.predict_proba(X_test_final)
 
     model.save(f"models/cnn_emb_{ds_name}.h5")
+    model.save_weights(f"models/weights/cnn_emb_weights_{ds_name}.h5")
 
     with open(f"results_plots/cnn_results/cnn_emb_results_{ds_name}.txt", "w") as f:
         f.write(
@@ -248,7 +239,7 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
         f"results_plots/cnn_results/cnn_emb_metrics.csv", "a", newline=""
     ) as csvfile:
         writer = csv.writer(csvfile, delimiter=",")
-        writer.writerow([ds_name, "cnn_emb", "AUC", roc_auc_score(y_test, class_preds)])
+        writer.writerow([ds_name, "cnn_emb", "AUC", roc_auc_score(y_test, proba_preds)])
         writer.writerow([ds_name, "cnn_emb", "F1_score", f1_score(y_test, class_preds)])
         writer.writerow(
             [ds_name, "cnn_emb", "F_beta", fbeta_score(y_test, class_preds, beta=3)]
@@ -283,7 +274,7 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
 
     # Compute ROC curve and ROC area for each class
     fpr, tpr, _ = roc_curve(y_test, proba_preds)
-    roc_auc = auc(fpr, tpr)
+    roc_auc = roc_auc_score(y_test, proba_preds)
 
     # plot ROC curve
     fig = plt.figure()
@@ -304,7 +295,7 @@ def main_cnn_trans(data_path, descriptor_path, embedding_model, ds_name):
 if __name__ == "__main__":
     from pathlib import Path
 
-    for ds_name in ["german"]:
+    for ds_name in ["bene2"]:
         print(ds_name)
         embedding_model = None
         embedding_model_path = f"datasets/{ds_name}/embedding_model_{ds_name}.h5"

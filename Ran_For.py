@@ -66,7 +66,6 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
     # set up template preprocessing pipelines
-
     # numeric pipeline with HighVIF and Scaling
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
@@ -114,12 +113,12 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__n_estimators": [int(x) for x in np.linspace(start=200, stop=1200, num=3)],
-        "clf__max_depth": [3, 7],
-        "clf__min_samples_split": [2, 50],
-        "clf__min_samples_leaf": [1, 2],
-        "clf__criterion": ["gini", "entropy"],
-        "preprocessing__numerical__highVifDropper": [HighVIFDropper()],
+        "clf__n_estimators": [1200],
+        "clf__max_depth": [10],
+        "clf__min_samples_split": [20],
+        "clf__min_samples_leaf": [1],
+        "clf__criterion": ["gini"],
+        "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
             RobustScaler(),
             StandardScaler(),
@@ -154,7 +153,6 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
     # generate predictions for test data using fitted model
     class_preds = ranfor_model.predict(X_test)
     proba_preds = ranfor_model.predict_proba(X_test)
-    # y_score = ranfor_model.decision_function(X_test)
 
     # save best model
     joblib.dump(ranfor_model.best_estimator_, f"models/ranfor_{ds_name}.pkl")
@@ -163,24 +161,28 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
     best_model_parameters(
         X_train,
         y_train,
+        y_test,
+        class_preds,
         nested_score=nested_score,
         clf_name="ranfor",
         model=ranfor_model,
         ds_name=ds_name,
     )
     # get evaluation metrics for test data
-    evaluate_metrics(y_test, class_preds, clf_name="ranfor", ds_name=ds_name)
+    evaluate_metrics(
+        y_test, class_preds, proba_preds, clf_name="ranfor", ds_name=ds_name
+    )
     # plot confusion matrix
     plot_cm(y_test, class_preds, modelname=f"ranfor_{ds_name}")
     # plot roc
-    plot_roc(y_test, proba_preds, modelname=f"ranfor_{ds_name}")
+    plot_roc(y_test, class_preds, proba_preds, modelname=f"ranfor_{ds_name}")
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["UK"]:
+    for ds_name in ["bene2"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

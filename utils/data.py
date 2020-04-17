@@ -29,35 +29,51 @@ def load_credit_scoring_data(data_path, descriptor_path, rearrange=False):
         dtype=dtype_dict,
     )
 
-
-
-    if rearrange == True:
-        #print(data.corr().sort_values('censor', ascending=False, na_position='last'))
+    if rearrange == "True":
+        # print(data.corr().sort_values('censor', ascending=False, na_position='last'))
 
         print(data.dtypes)
         print(data.head())
-        initial_ix= data.columns
-        print("init",initial_ix)
+        initial_ix = data.columns
+        print("init", initial_ix)
 
-        new_ix = data.corr().sort_values('censor', ascending=False, na_position='last').index
+        new_ix = (
+            data.corr().sort_values("censor", ascending=False, na_position="last").index
+        )
         diff = initial_ix.difference(new_ix)
 
-        print("diff: ",diff)
-        new_ix=new_ix.append(diff)
+        print("diff: ", diff)
+        new_ix = new_ix.append(diff)
 
-        print("new",new_ix)
+        print("new", new_ix)
 
         X = data.loc[:, new_ix]
         y = X.pop("censor")
         print("rearrangetrue")
-        #print(X.head())
-        #print(data.head())
+
+    elif rearrange == "Emb":
+
+        target = data.pop("censor")
+        num_var = data[data.select_dtypes("number").columns]
+        cat_var = data[data.select_dtypes(include=["category", "bool"]).columns]
+        num_data = pd.concat([num_var, target], axis=1)
+        ix = (
+            num_data.corr()
+            .sort_values("censor", ascending=False, na_position="last")
+            .index
+        )
+        num_data = num_data.loc[:, ix]
+
+        data = pd.concat([num_data, cat_var], axis=1)
+
+        y = data.pop("censor")
+        X = data
+        print("rearrange_emb_true")
 
     else:
         y = data.pop("censor")
         X = data
         print("rearearrangefalse")
-
 
     # split train, test data with stratification
     X_train, X_test, y_train, y_test = train_test_split(
