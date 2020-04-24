@@ -120,7 +120,7 @@ def main_1Dcnn(data_path, descriptor_path, embedding_model, ds_name):
     clf = "1Dcnn"
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(StratifiedKFold(n_split, random_state=13, shuffle=True).split(X)):
+    for i, (train_index, test_index) in enumerate(StratifiedKFold(n_split, random_state=13, shuffle=True).split(X, y)):
         iter = i + 1
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
