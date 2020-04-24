@@ -109,7 +109,7 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
         tuner = RandomSearch(
             buildmodel,
             objective=Objective("val_loss", direction="min"),
-            max_trials=5,
+            max_trials=2,
             executions_per_trial=2,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
@@ -121,7 +121,7 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
             y_train,
             validation_data=(X_test, y_test),
             epochs=100,
-            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=10)],
+            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=2)],
 
         )
         best_model = tuner.get_best_models(1)[0]

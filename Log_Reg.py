@@ -4,6 +4,7 @@ from keras.models import load_model
 
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
+from scikitplot.helpers import binary_ks_curve
 
 from sklearn.linear_model import LogisticRegression
 
@@ -35,13 +36,20 @@ from utils.model_evaluation import (
     plot_roc,
     plot_cm,
     evaluate_sklearn,
-    make_ks_plot,
+    plot_KS,
 )
 
 
 # define fbeta metric with beta = 3
 def f3(y_true, y_pred):
     return fbeta_score(y_true, y_pred, beta=3)
+
+
+# define ks statistic
+def ks(y_true, y_pred):
+    res = binary_ks_curve(y_true, y_pred)
+    ks_stat = res[3]
+    return ks_stat
 
 
 # define scorers
@@ -54,6 +62,7 @@ scorers = {
     "precision_score": make_scorer(precision_score),
     "recall_score": make_scorer(recall_score),
     "brier_score_loss": make_scorer(brier_score_loss),
+    "ks_stat": make_scorer(ks)
 }
 
 
@@ -161,9 +170,9 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     clf = "logreg"
 
     # # generate predictions for test data using fitted model
-    train_preds = logreg_model.predict(X_train)
     class_preds = logreg_model.predict(X_test)
     proba_preds = logreg_model.predict_proba(X_test)[:, 1]
+    ks_preds = logreg_model.predict_proba(X_test)
 
     # get best parameters and CV metrics, plot CM and ROC
     evaluate_sklearn(
@@ -176,9 +185,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     )
     plot_cm(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
     plot_roc(y_test, proba_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
-
-    """KS plot working correctly- see model evaluation for more info"""
-    make_ks_plot(y_train, train_preds, y_test, class_preds, clf, modelname=f"{clf}_{ds_name}", iter="")
+    plot_KS(y_test, ks_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
 
     # # save best model
     # joblib.dump(logreg_model.best_estimator_,
@@ -189,7 +196,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["UK"]:
+    for ds_name in ["bene1"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

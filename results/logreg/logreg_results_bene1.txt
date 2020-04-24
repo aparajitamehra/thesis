@@ -1,9 +1,0 @@
-Non-Nested auc_score: 0.694
-AUC score on hold-out test set: 0.665347810084652 Best parameter set: {'clf__C': 4, 'clf__dual': False, 'clf__fit_intercept': True, 'clf__penalty': 'l2', 'clf__solver': 'liblinear', 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['7', '3', '1', '5', '2', '4'], ['1', '2'],
-                           ['1', '2'], ['2', '1', '4', '3', '6'], ['9', '1'],
-                           ['4', '9', '3', '8'],
-                           ['10', '50', '80', '30', '60', '70', '40', '81'],
-                           ['1', '9', '6', '5', '3', '2', '4'],
-                           ['1', '2', '3']],
-               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': 'passthrough', 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': 'passthrough'}
-Best scores index: 0
