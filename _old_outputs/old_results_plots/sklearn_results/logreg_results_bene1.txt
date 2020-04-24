@@ -1,0 +1,28 @@
+Best auc_score on train set: 0.719
+Best auc_score on test set: 0.7070939402324294
+Best parameter set: {'clf__dual': False, 'clf__fit_intercept': True, 'clf__penalty': 'none', 'clf__solver': 'lbfgs', 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['7', '3', '1', '5', '2', '4'], ['1', '2'],
+                           ['1', '2'], ['2', '1', '4', '3', '6'], ['9', '1'],
+                           ['4', '9', '3', '8'],
+                           ['10', '50', '80', '30', '60', '70', '40', '81'],
+                           ['1', '9', '6', '5', '3', '2', '4'],
+                           ['1', '2', '3']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': OneHotEncoder(categories=[array([0., 1., 2., 3., 4., 5.]), array([0., 1.]),
+                          array([0., 1.]), array([0., 1., 2., 3., 4.]),
+                          array([0., 1.]), array([0., 1., 2., 3.]),
+                          array([0., 1., 2., 3., 4., 5., 6., 7.]),
+                          array([0., 1., 2., 3., 4., 5., 6.]),
+                          array([0., 1., 2.])],
+              drop='first', dtype=<class 'numpy.float64'>,
+              handle_unknown='error', sparse=True), 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': RobustScaler(copy=True, quantile_range=(25.0, 75.0), with_centering=True,
+             with_scaling=True)}
+Best scores index: 0
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.77      0.71      0.74      1665
+        True       0.67      0.74      0.70      1332
+
+    accuracy                           0.72      2997
+   macro avg       0.72      0.73      0.72      2997
+weighted avg       0.73      0.72      0.72      2997
+
+Nested Scores: 0.7184921442036802

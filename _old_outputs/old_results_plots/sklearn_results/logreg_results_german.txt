@@ -1,0 +1,35 @@
+Best auc_score on train set: 0.733
+Best auc_score on test set: 0.7083333333333334
+Best parameter set: {'clf__C': 2, 'clf__dual': False, 'clf__penalty': 'none', 'clf__solver': 'lbfgs', 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['A11', 'A12', 'A14', 'A13'],
+                           ['A34', 'A32', 'A33', 'A30', 'A31'],
+                           ['A43', 'A46', 'A42', 'A40', 'A41', 'A49', 'A44',
+                            'A45', 'A410', 'A48'],
+                           ['A65', 'A61', 'A63', 'A64', 'A62'],
+                           ['A75', 'A73', 'A74', 'A71', 'A72'],
+                           ['A93', 'A92', 'A91', 'A94'],
+                           ['A101', 'A103', 'A102'],
+                           ['A121', 'A122', 'A124', 'A123'],
+                           ['A143', 'A141', 'A142'], ['A152', 'A153', 'A151'],
+                           ['A173', 'A172', 'A174', 'A171'], ['A192', 'A191'],
+                           ['A201', 'A202']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': OneHotEncoder(categories=[array([0., 1., 2., 3.]), array([0., 1., 2., 3., 4.]),
+                          array([0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]),
+                          array([0., 1., 2., 3., 4.]),
+                          array([0., 1., 2., 3., 4.]), array([0., 1., 2., 3.]),
+                          array([0., 1., 2.]), array([0., 1., 2., 3.]),
+                          array([0., 1., 2.]), array([0., 1., 2.]),
+                          array([0., 1., 2., 3.]), array([0., 1.]),
+                          array([0., 1.])],
+              drop='first', dtype=<class 'numpy.float64'>,
+              handle_unknown='error', sparse=True), 'preprocessing__numerical__highVifDropper': HighVIFDropper(threshold=10), 'preprocessing__numerical__scaler': StandardScaler(copy=True, with_mean=True, with_std=True)}
+Best scores index: 8
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.79      0.79      0.79       560
+        True       0.74      0.73      0.74       448
+
+    accuracy                           0.77      1008
+   macro avg       0.76      0.76      0.76      1008
+weighted avg       0.77      0.77      0.77      1008
+
+Nested Scores: 0.723255052329065

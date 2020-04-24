@@ -1,0 +1,14 @@
+german ranfor AUC 0.6952380952380952
+german ranfor F1_score 0.5774647887323944
+german ranfor F_beta 0.6591639871382637
+german ranfor Accuracy 0.7
+german ranfor Balanced_Accuracy 0.6952380952380952
+german ranfor Precision 0.5
+german ranfor Recall 0.6833333333333333
+german,ranfor,AUC,0.7226190476190476
+german,ranfor,F1_score,0.6115702479338844
+german,ranfor,F_beta,0.6156405990016639
+german,ranfor,Accuracy,0.765
+german,ranfor,Balanced_Accuracy,0.7226190476190477
+german,ranfor,Precision,0.6065573770491803
+german,ranfor,Recall,0.6166666666666667

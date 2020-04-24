@@ -1,0 +1,21 @@
+bene2,2Dcnn_base,AUC,0.6599454643988796
+bene2,2Dcnn_base,F1 score,0.4621461487820935
+bene2,2Dcnn_base,F beta,0.4703202465496448
+bene2,2Dcnn_base,Accuracy,0.6591572799332499
+bene2,2Dcnn_base,Balanced Accuracy,0.6077281552450033
+bene2,2Dcnn_base,Precision,0.452319587628866
+bene2,2Dcnn_base,Recall,0.47240915208613726
+bene2,2Dcnn_base,AUC,0.6559790005833172
+bene2,2Dcnn_base,F1 score,0.43582510578279265
+bene2,2Dcnn_base,F beta,0.44282029234737746
+bene2,2Dcnn_base,Accuracy,0.6662494785148102
+bene2,2Dcnn_base,Balanced Accuracy,0.6006805366517597
+bene2,2Dcnn_base,Precision,0.42738589211618255
+bene2,2Dcnn_base,Recall,0.4446043165467626
+bene2,2Dcnn_base,AUC,0.6797878189992561
+bene2,2Dcnn_base,F1 score,0.45738045738045735
+bene2,2Dcnn_base,F beta,0.4586518415566365
+bene2,2Dcnn_base,Accuracy,0.6732053422370617
+bene2,2Dcnn_base,Balanced Accuracy,0.612013720772656
+bene2,2Dcnn_base,Precision,0.4558011049723757
+bene2,2Dcnn_base,Recall,0.45897079276773295

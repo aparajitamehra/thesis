@@ -1,0 +1,20 @@
+Best auc_score on train set: 0.944
+Best auc_score on test set: 0.9358420138888889
+Best parameter set: {'clf__criterion': 'gini', 'clf__max_depth': 10, 'clf__min_samples_leaf': 1, 'clf__min_samples_split': 50, 'clf__n_estimators': 650, 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[[True, False], ['2', '1'], ['1', '3', '4', '2', '5'],
+                           ['1', '2'], ['1', '2'], ['1', '2', '3', '4'],
+                           ['2', '1'],
+                           ['17', '7', '21', '26', '10', '18', '24', '11', '19',
+                            '16', '5', '27', '3', '4', '22', '12', '2', '6',
+                            '14', '8', '15', '23', '20', '25', '9', '1',
+                            '13']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': EntityEmbedder(embedding_model=<keras.engine.training.Model object at 0x13e16ef10>), 'preprocessing__numerical__highVifDropper': 'passthrough', 'preprocessing__numerical__scaler': 'passthrough'}
+Best scores index: 0
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.97      0.95      0.96     23040
+        True       0.94      0.96      0.95     18432
+
+    accuracy                           0.95     41472
+   macro avg       0.95      0.95      0.95     41472
+weighted avg       0.95      0.95      0.95     41472
+

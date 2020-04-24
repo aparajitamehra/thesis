@@ -1,0 +1,7 @@
+UK,ranfor,AUC,0.8279513888888889
+UK,ranfor,F1_score,0.35968379446640314
+UK,ranfor,F_beta,0.6207366984993178
+UK,ranfor,Accuracy,0.892
+UK,ranfor,Balanced_Accuracy,0.8279513888888889
+UK,ranfor,Precision,0.23575129533678757
+UK,ranfor,Recall,0.7583333333333333

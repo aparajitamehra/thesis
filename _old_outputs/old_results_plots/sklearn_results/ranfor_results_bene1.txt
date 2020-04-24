@@ -1,0 +1,19 @@
+Best auc_score on train set: 0.749
+Best auc_score on test set: 0.768458310274857
+Best parameter set: {'clf__criterion': 'gini', 'clf__max_depth': 7, 'clf__min_samples_leaf': 1, 'clf__min_samples_split': 50, 'clf__n_estimators': 375, 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['7', '3', '1', '5', '2', '4'], ['1', '2'],
+                           ['1', '2'], ['2', '1', '4', '3', '6'], ['9', '1'],
+                           ['4', '9', '3', '8'],
+                           ['10', '50', '80', '30', '60', '70', '40', '81'],
+                           ['1', '9', '6', '5', '3', '2', '4'],
+                           ['1', '2', '3']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': 'passthrough', 'preprocessing__numerical__highVifDropper': HighVIFDropper(threshold=10), 'preprocessing__numerical__scaler': 'passthrough'}
+Best scores index: 0
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.84      0.75      0.79      1665
+        True       0.72      0.82      0.77      1332
+
+    accuracy                           0.78      2997
+   macro avg       0.78      0.78      0.78      2997
+weighted avg       0.79      0.78      0.78      2997
+

@@ -1,0 +1,25 @@
+Best auc_score on train set: 0.792
+Best auc_score on test set: 0.9925429188257603
+Best parameter set: {'clf__criterion': 'gini', 'clf__max_depth': 30, 'clf__min_samples_leaf': 2, 'clf__min_samples_split': 2, 'clf__n_estimators': 500, 'preprocessing__categorical__base_encoder': OrdinalEncoder(categories=[['6', '1', '5', '2', '3', '4', '7', '9', '8'],
+                           ['1', '0'], ['4', '1', '3', '2', '6'],
+                           ['3', '18', '2', '5', '11', '15', '17', '12', '19',
+                            '4', '29', '7', '16', '1', '21', '23', '9', '24',
+                            '14', '27', '13', '8', '10', '26', '6', '25'],
+                           ['2', '1', '6', '5', '8', '3'], ['1', '2', '3', '4'],
+                           ['1', '0'], ['1', '2', '3', '4'], ['0', '1'],
+                           ['0', '1']],
+               dtype=<class 'numpy.float64'>), 'preprocessing__categorical__encoder': EntityEmbedder(embedding_model=<keras.engine.training.Model object at 0x1348fa890>), 'preprocessing__numerical__highVifDropper': HighVIFDropper(threshold=10), 'preprocessing__numerical__scaler': RobustScaler(copy=True, quantile_range=(25.0, 75.0), with_centering=True,
+             with_scaling=True)}
+Best scores index: 0
+Scores for train set:               precision    recall  f1-score   support
+
+       False       0.99      1.00      1.00      4026
+        True       0.99      0.99      0.99      1726
+
+    accuracy                           0.99      5752
+   macro avg       0.99      0.99      0.99      5752
+weighted avg       0.99      0.99      0.99      5752
+
+Nested Scores: [0.77825943 0.82474916 0.81529701 0.7741006 ]
+Nested Score Mean: 0.7981015484241973
+Nested Score Var: 0.022223494429682297
