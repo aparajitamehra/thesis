@@ -22,7 +22,7 @@ from utils.model_evaluation import evaluate_keras, plot_cm, plot_roc
 
 def preprocess(X, X_train, y_train, X_test, y_test, embedding_model):
 
-    oversampler = RandomOverSampler(sampling_strategy=0.8)
+    oversampler = RandomOverSampler(sampling_strategy=0.8, random_state=42)
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
     numeric_features = X.select_dtypes("number").columns
@@ -116,11 +116,11 @@ def main_1Dcnn(data_path, descriptor_path, embedding_model, ds_name):
         data_path, descriptor_path, rearrange=True
     )
 
-    n_split = 3
+    n_split = 5
     clf = "1Dcnn"
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(KFold(n_split).split(X)):
+    for i, (train_index, test_index) in enumerate(KFold(n_split, random_state=13).split(X)):
         iter = i + 1
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
@@ -133,8 +133,8 @@ def main_1Dcnn(data_path, descriptor_path, embedding_model, ds_name):
         tuner = RandomSearch(
             hypermodel=buildmodel,
             objective=Objective("val_auc", direction="max"),
-            max_trials=5,
-            # executions_per_trial=2,
+            max_trials=100,
+            executions_per_trial=2,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
             overwrite=True,
@@ -144,8 +144,8 @@ def main_1Dcnn(data_path, descriptor_path, embedding_model, ds_name):
             X_train,
             y_train,
             validation_data=(X_test, y_test),
-            epochs=5,
-            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=2)],
+            epochs=100,
+            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=10)],
         )
 
         best_model = tuner.get_best_models(1)[0]

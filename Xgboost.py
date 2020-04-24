@@ -23,7 +23,7 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     fbeta_score,
-    balanced_accuracy_score,
+    balanced_accuracy_score, brier_score_loss,
 )
 
 from utils.data_loading import load_credit_scoring_data
@@ -32,7 +32,7 @@ from utils.entity_embedding import EntityEmbedder
 from utils.model_evaluation import (
     plot_roc,
     plot_cm,
-    evaluate_sklearn,
+    evaluate_sklearn, make_ks_plot,
 )
 
 
@@ -50,6 +50,7 @@ scorers = {
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
     "precision_score": make_scorer(precision_score),
     "recall_score": make_scorer(recall_score),
+    "brier_score_loss": make_scorer(brier_score_loss),
 }
 
 
@@ -102,7 +103,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     # define pipeline with an oversampler, preprocessor and classifier
     xgboost_pipe = Pipeline(
         [
-            ("oversampling", RandomOverSampler(sampling_strategy=0.8)),
+            ("oversampling", RandomOverSampler(sampling_strategy=0.8, random_state=42)),
             ("preprocessing", preprocessor),
             (
                 "clf",
@@ -128,7 +129,9 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         "clf__gamma": [0.1],
         "clf__colsample_bytree": [0.8],
         "clf__n_estimators": [300],
-        "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
+        "preprocessing__numerical__highVifDropper": [
+            HighVIFDropper(),
+            "passthrough"],
         "preprocessing__numerical__scaler": [
             StandardScaler(),
             RobustScaler(),
@@ -147,8 +150,8 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = KFold(n_splits=3, shuffle=True)
-    outer_cv = KFold(n_splits=3, shuffle=True)
+    inner_cv = KFold(n_splits=5, shuffle=True, random_state=7)
+    outer_cv = KFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
     xgboost_grid = GridSearchCV(
@@ -171,6 +174,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     clf = "xgboost"
 
     # # generate predictions for test data using fitted model
+    train_preds = xgboost_model.predict(X_train)
     class_preds = xgboost_model.predict(X_test)
     proba_preds = xgboost_model.predict_proba(X_test)[:, 1]
 
@@ -186,6 +190,9 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
 
     plot_cm(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
     plot_roc(y_test, proba_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
+
+    """KS plot working correctly- see model evaluation for more info"""
+    make_ks_plot(y_train, train_preds, y_test, class_preds, clf, modelname=f"{clf}_{ds_name}", iter="")
 
 
 # # save best model

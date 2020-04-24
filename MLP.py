@@ -92,10 +92,10 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
     X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
 
     clf = "mlp"
-    n_split = 3
+    n_split = 5
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(KFold(n_split).split(X)):
+    for i, (train_index, test_index) in enumerate(KFold(n_split, random_state=13).split(X)):
         iter = i + 1
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
@@ -108,8 +108,8 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
 
         tuner = RandomSearch(
             buildmodel,
-            objective=Objective("val_auc", direction="max"),
-            max_trials=3,
+            objective=Objective("val_loss", direction="min"),
+            max_trials=5,
             executions_per_trial=2,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
@@ -120,8 +120,9 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
             X_train,
             y_train,
             validation_data=(X_test, y_test),
-            epochs=3,
-            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=2)],
+            epochs=100,
+            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=10)],
+
         )
         best_model = tuner.get_best_models(1)[0]
 

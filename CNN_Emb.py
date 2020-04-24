@@ -21,15 +21,11 @@ from utils.model_evaluation import evaluate_keras, plot_cm, plot_roc
 
 np.random.seed = 50
 
-early_stopping_auc = keras.callbacks.EarlyStopping(
-    monitor="val_auc", patience=10, mode="max", restore_best_weights=True
-)
-
 
 def preprocess(X, X_train, y_train, X_test, embedding_model):
 
     n_bins = 10
-    oversampler = RandomOverSampler(sampling_strategy=0.8)
+    oversampler = RandomOverSampler(sampling_strategy=0.8, random_state=42)
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
     print(X_train.shape)
     print(y_train.shape)
@@ -105,7 +101,7 @@ def preprocess(X, X_train, y_train, X_test, embedding_model):
     instances_train = np.array(instances_train)
     instances_test = np.array(instances_test)
 
-    # shuffle columns of instance matrices to change spatial relationships
+    # randomly shuffle columns of instance matrices to change spatial relationships
     """
     all_instances = list(zip(instances_train.T, instances_val.T, instances_test.T))
     np.random.shuffle(all_instances)
@@ -135,7 +131,7 @@ def buildmodel(hp):
     model.add(
         keras.layers.Conv2D(
             filters=filters,
-            kernel_size=(4, 8),
+            kernel_size=2,
             padding="same",
             activation="relu",
             input_shape=(n_bins, n_var, 1),
@@ -175,11 +171,11 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
         data_path, descriptor_path, rearrange=True
     )
 
-    n_split = 3
+    n_split = 5
     clf = "2Dcnn_emb"
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(KFold(n_split).split(X)):
+    for i, (train_index, test_index) in enumerate(KFold(n_split, random_state=13).split(X)):
         iter = i + 1
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
@@ -191,8 +187,8 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
         tuner = RandomSearch(
             hypermodel=buildmodel,
             objective=Objective("val_auc", direction="max"),
-            max_trials=2,
-            # executions_per_trial=2,
+            max_trials=100,
+            executions_per_trial=2,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
             overwrite=True,
@@ -202,8 +198,8 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
             X_train_final,
             y_train,
             validation_data=(X_test_final, y_test),
-            epochs=3,
-            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=1)],
+            epochs=100,
+            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=10)],
         )
 
         best_model = tuner.get_best_models(1)[0]

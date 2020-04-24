@@ -25,6 +25,7 @@ from sklearn.metrics import (
     f1_score,
     fbeta_score,
     balanced_accuracy_score,
+    brier_score_loss,
 )
 
 from utils.data_loading import load_credit_scoring_data
@@ -34,6 +35,7 @@ from utils.model_evaluation import (
     plot_roc,
     plot_cm,
     evaluate_sklearn,
+    make_ks_plot,
 )
 
 
@@ -51,6 +53,7 @@ scorers = {
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
     "precision_score": make_scorer(precision_score),
     "recall_score": make_scorer(recall_score),
+    "brier_score_loss": make_scorer(brier_score_loss),
 }
 
 
@@ -105,7 +108,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     # define pipeline with an oversampler, preprocessor and classifier
     logreg_pipe = Pipeline(
         [
-            ("oversampler", RandomOverSampler(sampling_strategy=0.8)),
+            ("oversampler", RandomOverSampler(sampling_strategy=0.8, random_state=42)),
             ("preprocessing", preprocessor),
             ("clf", LogisticRegression(max_iter=100000),),
         ]
@@ -139,12 +142,12 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = KFold(n_splits=3, shuffle=True)
-    outer_cv = KFold(n_splits=3, shuffle=True)
+    inner_cv = KFold(n_splits=5, shuffle=True, random_state=7)
+    outer_cv = KFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
     logreg_grid = GridSearchCV(
-        logreg_pipe, param_grid=params, cv=inner_cv, scoring=scorers, refit="auc",
+        logreg_pipe, param_grid=params, cv=inner_cv, scoring=scorers, refit="auc", verbose=3
     )
 
     # fit pipeline to cross validated data
@@ -158,6 +161,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     clf = "logreg"
 
     # # generate predictions for test data using fitted model
+    train_preds = logreg_model.predict(X_train)
     class_preds = logreg_model.predict(X_test)
     proba_preds = logreg_model.predict_proba(X_test)[:, 1]
 
@@ -173,6 +177,9 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     plot_cm(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
     plot_roc(y_test, proba_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
 
+    """KS plot working correctly- see model evaluation for more info"""
+    make_ks_plot(y_train, train_preds, y_test, class_preds, clf, modelname=f"{clf}_{ds_name}", iter="")
+
     # # save best model
     # joblib.dump(logreg_model.best_estimator_,
     # f"[old]results_plots/models/{clf}_{ds_name}.pkl")
@@ -182,7 +189,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["bene2"]:
+    for ds_name in ["UK"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None
