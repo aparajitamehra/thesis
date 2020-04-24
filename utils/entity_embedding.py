@@ -109,7 +109,7 @@ if __name__ == "__main__":
     from sklearn.compose import ColumnTransformer
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder
-    from utils.data import load_credit_scoring_data
+    from utils.data_loading import load_credit_scoring_data
 
     for ds_name in ["bene1", "bene2", "german"]:
         X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(

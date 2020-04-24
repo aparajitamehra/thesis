@@ -1,11 +1,12 @@
 import numpy as np
 
-from imblearn.over_sampling import RandomOverSampler
-from xgboost import XGBClassifier
-from sklearn.externals import joblib
-
 from keras.models import load_model
-from sklearn.pipeline import Pipeline
+from xgboost import XGBClassifier
+
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.pipeline import Pipeline
+
+# from sklearn.externals import joblib
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
     OneHotEncoder,
@@ -14,62 +15,49 @@ from sklearn.preprocessing import (
     OrdinalEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import (
-    GridSearchCV,
-    KFold,
-    cross_val_score,
-)
+from sklearn.model_selection import GridSearchCV, KFold, cross_validate
 from sklearn.metrics import (
     make_scorer,
     recall_score,
     precision_score,
-    roc_auc_score,
     accuracy_score,
     f1_score,
     fbeta_score,
     balanced_accuracy_score,
 )
 
-from utils.data import load_credit_scoring_data
-from utils.preprocessing import HighVIFDropper
+from utils.data_loading import load_credit_scoring_data
+from utils.highVIFdropper import HighVIFDropper
 from utils.entity_embedding import EntityEmbedder
-from utils.sklearn_results_plotting import (
-    evaluate_metrics,
-    plot_roc,
-    plot_cm,
-    best_model_parameters,
+from utils.model_evaluation import (
+    # plot_roc,
+    # plot_cm,
+    evaluate_sklearn,
 )
 
 
 # define fbeta metric with beta = 3
-def f2(y_true, y_pred):
+def f3(y_true, y_pred):
     return fbeta_score(y_true, y_pred, beta=3)
 
 
 # define scorers
 scorers = {
-    "recall_score": make_scorer(recall_score),
+    "auc": "roc_auc",
     "f1_score": make_scorer(f1_score),
+    "fbeta_score": make_scorer(f3),
     "accuracy_score": make_scorer(accuracy_score),
-    "precision_score": make_scorer(precision_score),
-    "fbeta_score": make_scorer(f2),
-    "auc": make_scorer(roc_auc_score),
     "balanced_accuracy": make_scorer(balanced_accuracy_score),
+    "precision_score": make_scorer(precision_score),
+    "recall_score": make_scorer(recall_score),
 }
 
 
 def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     # load and split data
-    X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
-        data_path, descriptor_path
-    )
+    X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
 
-    # oversample minority class to mitigate imbalance issue
-    oversampler = RandomOverSampler(sampling_strategy=0.8)
-    X_train, y_train = oversampler.fit_resample(X_train, y_train)
-
-    # set up template preprocessing pipelines
-
+    # set up preprocessing pipelines
     # numeric pipeline with HighVIF and Scaling
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
@@ -109,9 +97,10 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # define classifier as a preprocessor and classifier pipeline
+    # define pipeline with an oversampler, preprocessor and classifier
     xgboost_pipe = Pipeline(
         [
+            ("oversampling", RandomOverSampler(sampling_strategy=0.8)),
             ("preprocessing", preprocessor),
             (
                 "clf",
@@ -136,7 +125,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         "clf__reg_lambda": [1],
         "clf__gamma": [0.1],
         "clf__colsample_bytree": [0.8],
-        "clf__n_estimators": [250, 300],
+        "clf__n_estimators": [300],
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
             StandardScaler(),
@@ -154,7 +143,8 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
             "passthrough",
         ],
     }
-    #
+
+    # define nested cross validation parameters
     inner_cv = KFold(n_splits=4, shuffle=True)
     outer_cv = KFold(n_splits=4, shuffle=True)
 
@@ -168,45 +158,36 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         verbose=1,
     )
 
-    # fit pipeline to training data
-    xgboost_model = xgboost_grid.fit(X_train, y_train)
+    # fit pipeline to cross validated data
+    xgboost_model = xgboost_grid.fit(X, y)
 
     # calculate nested validation scores
-    nested_score = cross_val_score(xgboost_grid, X_train, y_train, cv=outer_cv)
+    scores = cross_validate(xgboost_model, X, y, cv=outer_cv, scoring=scorers)
 
-    # generate predictions for test data using fitted model
-    class_preds = xgboost_model.predict(X_test)
-    proba_preds = xgboost_model.predict_proba(X_test)
+    clf = "xgboost"
 
-    # save best model
-    joblib.dump(xgboost_model.best_estimator_, f"models/xgboost_{ds_name}.pkl")
-
-    # get best parameters and classification report for training data
-    best_model_parameters(
-        X_train,
-        y_train,
-        y_test,
-        class_preds,
-        nested_score=nested_score,
-        clf_name="xgboost",
-        model=xgboost_model,
-        ds_name=ds_name,
+    # get best parameters and CV metrics
+    evaluate_sklearn(
+        scores, clf, model=xgboost_model, ds_name=ds_name,
     )
-    # get evaluation metrics for test data
-    evaluate_metrics(
-        y_test, class_preds, proba_preds, clf_name="xgboost", ds_name=ds_name
-    )
-    # plot confusion matrix
-    plot_cm(y_test, class_preds, modelname=f"xgboost_{ds_name}")
-    # plot roc
-    plot_roc(y_test, class_preds, proba_preds, modelname=f"xgboost_{ds_name}")
+
+    # # generate predictions for test data using fitted model
+    # class_preds = xgboost_model.predict(X_test)
+    # proba_preds = xgboost_model.predict_proba(X_test)[:, 1]
+
+    # # save best model
+    # joblib.dump(xgboost_model.best_estimator_,
+    # f"[old]results_plots/models/xgboost_{ds_name}.pkl")
+
+    # plot_cm(y_test, class_preds, modelname=f"xgboost_{ds_name}")
+    # plot_roc(y_test, proba_preds, modelname=f"xgboost_{ds_name}")
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each data set:
-    for ds_name in ["bene2"]:
+    for ds_name in ["bene1"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None
