@@ -10,7 +10,7 @@ from imblearn.over_sampling import RandomOverSampler
 
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler, OrdinalEncoder
 
@@ -95,7 +95,7 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
     n_split = 5
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(KFold(n_split, random_state=13).split(X)):
+    for i, (train_index, test_index) in enumerate(StratifiedKFold(n_split, random_state=13, shuffle=True).split(X)):
         iter = i + 1
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]

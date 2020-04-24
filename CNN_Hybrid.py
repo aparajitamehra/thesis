@@ -12,7 +12,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import KBinsDiscretizer, StandardScaler, OneHotEncoder
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 
 from utils.data_loading import load_credit_scoring_data
 from utils.highVIFdropper import HighVIFDropper
@@ -177,7 +177,7 @@ def main_2Dcnn_hybrid(data_path, descriptor_path, ds_name):
     clf = "2Dcnn_hybrid"
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(KFold(n_split, random_state=13).split(X)):
+    for i, (train_index, test_index) in enumerate(StratifiedKFold(n_split, random_state=13, shuffle=True).split(X)):
         iter = i + 1
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]

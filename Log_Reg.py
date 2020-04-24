@@ -17,7 +17,7 @@ from sklearn.preprocessing import (
     OneHotEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV, KFold, cross_validate
+from sklearn.model_selection import GridSearchCV, cross_validate, StratifiedKFold
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -151,8 +151,8 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = KFold(n_splits=5, shuffle=True, random_state=7)
-    outer_cv = KFold(n_splits=5, shuffle=True, random_state=13)
+    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+    outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
     logreg_grid = GridSearchCV(

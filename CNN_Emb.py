@@ -8,7 +8,7 @@ from kerastuner import RandomSearch, Objective
 
 from imblearn.over_sampling import RandomOverSampler
 
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler, KBinsDiscretizer
@@ -175,7 +175,7 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
     clf = "2Dcnn_emb"
     aucscores = []
 
-    for i, (train_index, test_index) in enumerate(KFold(n_split, random_state=13).split(X)):
+    for i, (train_index, test_index) in enumerate(StratifiedKFold(n_split, random_state=13, shuffle=True).split(X)):
         iter = i + 1
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]

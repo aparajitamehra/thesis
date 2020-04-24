@@ -19,8 +19,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import (
     GridSearchCV,
     # RandomizedSearchCV,
-    KFold,
-    cross_validate,
+    cross_validate, StratifiedKFold,
 )
 from sklearn.metrics import (
     make_scorer,
@@ -153,8 +152,8 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = KFold(n_splits=5, shuffle=True, random_state=7)
-    outer_cv = KFold(n_splits=5, shuffle=True, random_state=13)
+    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+    outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
     ranfor_grid = GridSearchCV(
