@@ -27,9 +27,12 @@ key_results = [
 ]
 
 
-def evaluate_sklearn(scores, clf_name, model, ds_name):
+def evaluate_sklearn(y_test, proba_preds, scores, clf_name, model, ds_name):
     with open(f"results/{clf_name}/{clf_name}_results_{ds_name}.txt", "w") as f:
         f.write(f"Non-Nested auc_score: {model.best_score_:.3f}\n")
+        f.write(
+            f"AUC score on hold-out test set: {roc_auc_score(y_test, proba_preds)} "
+        )
         f.write(f"Best parameter set: {model.best_params_}\n")
         f.write(f"Best scores index: {model.best_index_}\n")
 

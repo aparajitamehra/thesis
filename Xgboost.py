@@ -30,8 +30,8 @@ from utils.data_loading import load_credit_scoring_data
 from utils.highVIFdropper import HighVIFDropper
 from utils.entity_embedding import EntityEmbedder
 from utils.model_evaluation import (
-    # plot_roc,
-    # plot_cm,
+    plot_roc,
+    plot_cm,
     evaluate_sklearn,
 )
 
@@ -55,7 +55,9 @@ scorers = {
 
 def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     # load and split data
-    X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
+    X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
+        data_path, descriptor_path
+    )
 
     # set up preprocessing pipelines
     # numeric pipeline with HighVIF and Scaling
@@ -145,8 +147,8 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = KFold(n_splits=4, shuffle=True)
-    outer_cv = KFold(n_splits=4, shuffle=True)
+    inner_cv = KFold(n_splits=3, shuffle=True)
+    outer_cv = KFold(n_splits=3, shuffle=True)
 
     # define grid search for classifier
     xgboost_grid = GridSearchCV(
@@ -159,28 +161,36 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     )
 
     # fit pipeline to cross validated data
-    xgboost_model = xgboost_grid.fit(X, y)
+    xgboost_model = xgboost_grid.fit(X_train, y_train)
 
     # calculate nested validation scores
-    scores = cross_validate(xgboost_model, X, y, cv=outer_cv, scoring=scorers)
+    scores = cross_validate(
+        xgboost_model, X_train, y_train, cv=outer_cv, scoring=scorers
+    )
 
     clf = "xgboost"
 
+    # # generate predictions for test data using fitted model
+    class_preds = xgboost_model.predict(X_test)
+    proba_preds = xgboost_model.predict_proba(X_test)[:, 1]
+
     # get best parameters and CV metrics
     evaluate_sklearn(
-        scores, clf, model=xgboost_model, ds_name=ds_name,
+        y_test,
+        proba_preds=proba_preds,
+        scores=scores,
+        clf_name=clf,
+        model=xgboost_model,
+        ds_name=ds_name,
     )
 
-    # # generate predictions for test data using fitted model
-    # class_preds = xgboost_model.predict(X_test)
-    # proba_preds = xgboost_model.predict_proba(X_test)[:, 1]
+    plot_cm(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
+    plot_roc(y_test, proba_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
 
-    # # save best model
-    # joblib.dump(xgboost_model.best_estimator_,
-    # f"[old]results_plots/models/xgboost_{ds_name}.pkl")
 
-    # plot_cm(y_test, class_preds, modelname=f"xgboost_{ds_name}")
-    # plot_roc(y_test, proba_preds, modelname=f"xgboost_{ds_name}")
+# # save best model
+# joblib.dump(xgboost_model.best_estimator_,
+# f"[old]results_plots/models/xgboost_{ds_name}.pkl")
 
 
 if __name__ == "__main__":
