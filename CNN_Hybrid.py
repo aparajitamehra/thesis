@@ -17,7 +17,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from utils.data_loading import load_credit_scoring_data
 from utils.highVIFdropper import HighVIFDropper
-from utils.model_evaluation import evaluate_keras, plot_cm, plot_roc, roc_iter
+from utils.model_evaluation import evaluate_metrics, plot_cm, plot_roc, roc_iter
 
 
 def preprocess(X, X_train, y_train, X_test, y_test):
@@ -229,7 +229,7 @@ def main_2Dcnn_hybrid(data_path, descriptor_path, ds_name):
         proba_preds = proba_preds[:, 0]
         class_preds = proba_preds.round()
 
-        evaluate_keras(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
         plot_cm(y_test, class_preds, clf, modelname=modelname, iter=iter, p=0.5)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 

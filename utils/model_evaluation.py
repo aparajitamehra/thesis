@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
 import numpy as np
 import csv
 
@@ -34,22 +33,18 @@ key_results = [
 ]
 
 
-def evaluate_sklearn(scores, clf_name, model, ds_name):
+def evaluate_parameters(clf_name, model, ds_name, iter):
 
-    with open(f"results/{clf_name}/{clf_name}_results_{ds_name}.txt", "w") as f:
+    with open(
+        f"results/{clf_name}/{clf_name}_results_{ds_name}.txt", "a", newline=""
+    ) as f:
+        f.write(f"Iteration: {iter}\n")
         f.write(f"Non-Nested auc_score: {model.best_score_:.3f}\n")
-        # f.write(
-        #     f"AUC score on hold-out test set: {roc_auc_score(y_test, proba_preds)} "
-        # )
         f.write(f"Best parameter set: {model.best_params_}\n")
-        f.write(f"Best scores index: {model.best_index_}\n")
-
-    pd.DataFrame(scores)[key_results].to_csv(
-        f"results/{clf_name}/{clf_name}_CV_results_{ds_name}.csv"
-    )
+        f.write(f"Best scores index: {model.best_index_}\n\n\n")
 
 
-def evaluate_keras(y_test, class_preds, proba_preds, clf_name, ds_name, iter):
+def evaluate_metrics(y_test, class_preds, proba_preds, clf_name, ds_name, iter):
 
     # calculate ks_stat
     res = binary_ks_curve(y_test, proba_preds)

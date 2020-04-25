@@ -18,7 +18,7 @@ from sklearn.impute import SimpleImputer
 from utils.data_loading import load_credit_scoring_data
 from utils.entity_embedding import EntityEmbedder
 from utils.highVIFdropper import HighVIFDropper
-from utils.model_evaluation import evaluate_keras, plot_cm, plot_roc, roc_iter
+from utils.model_evaluation import evaluate_metrics, plot_cm, plot_roc, roc_iter
 
 np.random.seed = 50
 
@@ -217,7 +217,7 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
         proba_preds = best_model.predict(X_test_final)
         class_preds = best_model.predict_classes(X_test_final)
 
-        evaluate_keras(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
         plot_cm(y_test, class_preds, clf, modelname=modelname, iter=iter, p=0.5)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 

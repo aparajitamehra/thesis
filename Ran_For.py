@@ -4,6 +4,7 @@ from keras.models import load_model
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from scikitplot.helpers import binary_ks_curve
+import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestClassifier
 
@@ -19,7 +20,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import (
     GridSearchCV,
     # RandomizedSearchCV,
-    cross_validate, StratifiedKFold,
+    StratifiedKFold,
 )
 from sklearn.metrics import (
     make_scorer,
@@ -28,7 +29,8 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     fbeta_score,
-    balanced_accuracy_score, brier_score_loss,
+    balanced_accuracy_score,
+    brier_score_loss,
 )
 
 from utils.data_loading import load_credit_scoring_data
@@ -37,7 +39,10 @@ from utils.entity_embedding import EntityEmbedder
 from utils.model_evaluation import (
     plot_roc,
     plot_cm,
-    evaluate_sklearn, plot_KS,
+    plot_KS,
+    roc_iter,
+    evaluate_parameters,
+    evaluate_metrics,
 )
 
 
@@ -63,16 +68,14 @@ scorers = {
     "precision_score": make_scorer(precision_score),
     "recall_score": make_scorer(recall_score),
     "brier_score_loss": make_scorer(brier_score_loss),
-    "ks_stat": make_scorer(ks)
+    "ks_stat": make_scorer(ks),
 }
 
 
 def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
 
     # load data
-    X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
-        data_path, descriptor_path
-    )
+    X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
 
     # set up preprocessing pipelines
     # numeric pipeline with HighVIF and Scaling
@@ -126,14 +129,12 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__n_estimators": [500],
-        "clf__max_depth": [30],
-        "clf__min_samples_split": [2],
-        "clf__min_samples_leaf": [2],
-        "clf__criterion": ["gini"],
-        "preprocessing__numerical__highVifDropper": [
-            HighVIFDropper(),
-            "passthrough"],
+        "clf__n_estimators": [100, 500, 1200],
+        "clf__max_depth": ["none", 5, 10, 25],
+        "clf__min_samples_split": [2, 7, 12],
+        "clf__min_samples_leaf": [1, 5, 10],
+        "clf__criterion": ["gini", "entropy"],
+        "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
             RobustScaler(),
             StandardScaler(),
@@ -145,7 +146,6 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ],
         "preprocessing__categorical__encoder": [
             EntityEmbedder(embedding_model=embedding_model),
-            OneHotEncoder(categories=post_encoding_cats, drop="first"),
             OneHotEncoder(categories=post_encoding_cats),
             "passthrough",
         ],
@@ -165,44 +165,47 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         verbose=1,
     )
 
-    # fit pipeline to cross validated data
-    ranfor_model = ranfor_grid.fit(X_train, y_train)
+    clf = "ranfor"
+    modelname = f"{clf}_{ds_name}"
+
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+    fig = plt.figure(figsize=(10, 10))
 
     # calculate nested validation scores
-    scores = cross_validate(
-        ranfor_model, X_train, y_train, cv=outer_cv, scoring=scorers
-    )
+    for i, (train_index, test_index) in enumerate((outer_cv).split(X, y)):
+        iter = i + 1
 
-    clf = "ranfor"
+        x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-    # # generate predictions for test data using fitted model
-    class_preds = ranfor_model.predict(X_test)
-    ks_preds = ranfor_model.predict_proba(X_test)
+        ranfor_model = ranfor_grid.fit(x_train_split, y_train)
 
-    # get best parameters and CV metrics
-    evaluate_sklearn(
-        y_test,
-        proba_preds=class_preds,
-        scores=scores,
-        clf_name=clf,
-        model=ranfor_model,
-        ds_name=ds_name,
-    )
+        # # generate predictions for test data using fitted model
+        class_preds = ranfor_model.predict(x_test_split)
+        proba_preds = ranfor_model.predict_proba(x_test_split)[:, 1]
+        ks_preds = ranfor_model.predict_proba(x_test_split)
 
-    plot_cm(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
-    plot_roc(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
-    plot_KS(y_test, ks_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
+        # get best parameters and CV metrics, plot CM and ROC
+        evaluate_parameters(
+            clf_name=clf, model=ranfor_model, ds_name=ds_name, iter=iter,
+        )
+        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        plot_cm(y_test, class_preds, clf_name=clf, modelname=modelname, iter=iter)
+        plot_KS(y_test, ks_preds, clf_name=clf, modelname=modelname, iter=iter)
+        roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 
-    # # save best model
-    # joblib.dump(ranfor_model.best_estimator_,
-    # f"[old]results_plots/models/{clf}_{ds_name}.pkl")
+    plot_roc(tprs, aucs, mean_fpr, clf, modelname=modelname)
+    fig.savefig(f"results/{clf}/{modelname}_ROC.png")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["bene2"]:
+    for ds_name in ["bene1"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None
