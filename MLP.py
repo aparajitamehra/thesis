@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
+import matplotlib.pyplot as plt
 
 from tensorflow.keras.utils import plot_model
 from keras.models import load_model
@@ -17,7 +18,7 @@ from sklearn.preprocessing import RobustScaler, OrdinalEncoder
 from utils.data_loading import load_credit_scoring_data
 from utils.highVIFdropper import HighVIFDropper
 from utils.entity_embedding import EntityEmbedder
-from utils.model_evaluation import evaluate_keras, plot_cm, plot_roc
+from utils.model_evaluation import evaluate_keras, plot_cm, plot_roc, roc_iter
 
 
 def preprocess(X, X_train, y_train, X_test, y_test, embedding_model):
@@ -91,11 +92,18 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
 
     X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
 
-    clf = "mlp"
     n_split = 5
-    aucscores = []
+    clf = "mlp"
+    modelname = f"{clf}_{ds_name}"
 
-    for i, (train_index, test_index) in enumerate(StratifiedKFold(n_split, random_state=13, shuffle=True).split(X, y)):
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+    fig = plt.figure(figsize=(10, 10))
+
+    for i, (train_index, test_index) in enumerate(
+        StratifiedKFold(n_split, random_state=13, shuffle=True).split(X, y)
+    ):
         iter = i + 1
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
@@ -109,7 +117,7 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
         tuner = RandomSearch(
             buildmodel,
             objective=Objective("val_loss", direction="min"),
-            max_trials=2,
+            max_trials=100,
             executions_per_trial=2,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
@@ -121,8 +129,9 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
             y_train,
             validation_data=(X_test, y_test),
             epochs=100,
-            callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=2)],
-
+            callbacks=[
+                tf.keras.callbacks.EarlyStopping(monitor="val_auc", patience=10)
+            ],
         )
         best_model = tuner.get_best_models(1)[0]
 
@@ -130,20 +139,17 @@ def main_mlp(data_path, descriptor_path, embedding_model, ds_name):
         class_preds = best_model.predict_classes(X_test)
 
         evaluate_keras(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
-        plot_cm(
-            y_test, class_preds, clf, modelname=f"{clf}_{ds_name}", iter=iter, p=0.5
-        )
-        plot_roc(y_test, proba_preds, clf, modelname=f"{clf}_{ds_name}", iter=iter)
+        plot_cm(y_test, class_preds, clf, modelname=modelname, iter=iter, p=0.5)
+        roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 
-        scores = best_model.evaluate(X_test, y_test)
-        aucscores.append(scores[-1])
-    print(aucscores)
-    print("%.2f%% (+/- %.2f%%)" % (np.mean(aucscores), np.std(aucscores)))
     plot_model(
         model=best_model,
         to_file=f"model_plots/{clf}_{ds_name}_model_plot.png",
         show_shapes=True,
     )
+    plot_roc(tprs, aucs, mean_fpr, clf, modelname=modelname)
+    fig.savefig(f"results/{clf}/{modelname}_ROC.png")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
