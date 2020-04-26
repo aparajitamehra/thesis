@@ -1,3 +1,7 @@
+results
+kerastuner
+model_plots
+
 .DS_Store
 ../.idea/
 
