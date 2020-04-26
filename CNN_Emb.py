@@ -140,14 +140,13 @@ def buildmodel(hp):
             kernel_initializer="normal",
         )
     )
-    model.add(keras.layers.Dropout(0.2))
     if hp.Choice("pooling_", values=["avg", "max"]) == "max":
         model.add(keras.layers.MaxPooling2D(pool_size=2))
     else:
         model.add(keras.layers.AveragePooling2D(pool_size=2))
 
     model.add(keras.layers.Flatten())
-    model.add(keras.layers.Dense(8, activation="relu"))
+    model.add(keras.layers.Dense(hidden1, activation="relu"))
     model.add(keras.layers.Dense(1, activation="sigmoid"))
 
     adam = keras.optimizers.Adam(
