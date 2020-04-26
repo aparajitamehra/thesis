@@ -125,6 +125,7 @@ def preprocess(X, X_train, y_train, X_test, embedding_model):
 # build CNN
 def buildmodel(hp):
     filters = hp.Choice("filters", values=[4, 8, 16, 32])
+    hidden1 = hp.Choice("hidden1", values=[2, 4, 8])
     # kernel = hp.Choice('kernel_size', values = [2,3])
 
     model = None
@@ -139,18 +140,17 @@ def buildmodel(hp):
             kernel_initializer="normal",
         )
     )
-    model.add(keras.layers.Dropout(0.2))
     if hp.Choice("pooling_", values=["avg", "max"]) == "max":
         model.add(keras.layers.MaxPooling2D(pool_size=2))
     else:
         model.add(keras.layers.AveragePooling2D(pool_size=2))
 
     model.add(keras.layers.Flatten())
-    model.add(keras.layers.Dense(8, activation="relu"))
+    model.add(keras.layers.Dense(hidden1, activation="relu"))
     model.add(keras.layers.Dense(1, activation="sigmoid"))
 
     adam = keras.optimizers.Adam(
-        hp.Choice("learning_rate", values=[1e-2, 1e-3, 1e-4, 1e-5])
+        hp.Choice("learning_rate", values=[1e-1, 1e-2, 1e-3, 1e-4])
     )
 
     model.compile(
@@ -196,7 +196,7 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
             hypermodel=buildmodel,
             objective=Objective("val_auc", direction="max"),
             max_trials=100,
-            executions_per_trial=2,
+            executions_per_trial=1,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
             overwrite=True,

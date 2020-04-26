@@ -71,7 +71,7 @@ def preprocess(X, X_train, y_train, X_test, y_test, embedding_model):
 def buildmodel(hp):
 
     filters = hp.Choice("filters", values=[4, 8, 16, 32])
-
+    hidden1 = hp.Choice("hidden1", values=[2, 4, 6, 8, 10])
     model = None
     model = keras.Sequential()
 
@@ -85,7 +85,6 @@ def buildmodel(hp):
             strides=1,
         )
     )
-    model.add(keras.layers.GlobalMaxPooling1D())
 
     # for i in range(hp.Int('nr_layers', 1, 2)):
     #     model.add(keras.layers.Conv1D(filters=filters,
@@ -94,12 +93,12 @@ def buildmodel(hp):
     #     input_shape=(None,1),
     #     padding='same', strides=1))
 
-    # if hp.Choice('pooling_', values=['avg', 'max']) == 'max':
-    #     model.add(keras.layers.MaxPooling1D(pool_size=2))
-    # else:
-    #     model.add(keras.layers.AveragePooling1D(pool_size=2))
+    if hp.Choice("pooling_", values=["avg", "max"]) == "max":
+        model.add(keras.layers.GlobalMaxPooling1D())
+    else:
+        model.add(keras.layers.GlobalAveragePooling1D())
 
-    model.add(keras.layers.Dense(16, activation="relu"))
+    model.add(keras.layers.Dense(hidden1, activation="relu"))
     model.add(keras.layers.Dense(1, activation="sigmoid"))
 
     model.compile(
@@ -181,7 +180,7 @@ def main_1Dcnn(data_path, descriptor_path, embedding_model, ds_name):
 if __name__ == "__main__":
     from pathlib import Path
 
-    for ds_name in ["bene1"]:
+    for ds_name in ["UK", "bene2", "german"]:
         print(ds_name)
 
         embedding_model = None
