@@ -4,6 +4,7 @@ from keras.models import load_model
 from scikitplot.helpers import binary_ks_curve
 from xgboost import XGBClassifier
 import matplotlib.pyplot as plt
+from scipy import stats
 
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
@@ -17,7 +18,7 @@ from sklearn.preprocessing import (
     OrdinalEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -138,12 +139,12 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__max_depth": [3, 5, 7, 10],
-        "clf__learning_rate": [0.05, 0.1, 0.2, 0.3],
-        "clf__min_child_weight": [1, 3, 5, 7],
-        "clf__gamma": [0, 0.1, 0.3],
-        "clf__colsample_bytree": [0.7, 0.8],
-        "clf__n_estimators": [100, 300, 500, 1000],
+        "clf__max_depth": [3, 4, 5, 6, 7, 8, 9],
+        "clf__learning_rate": stats.uniform(0.01, 0.6),
+        "clf__min_child_weight": [1, 2, 3, 4, 5],
+        "clf__gamma": stats.uniform(0, 0.5),
+        "clf__colsample_bytree": stats.uniform(0.5, 0.5),
+        "clf__n_estimators": stats.randint(150, 1000),
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
             StandardScaler(),
@@ -162,13 +163,14 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+    inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
     outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
-    xgboost_grid = GridSearchCV(
+    xgboost_grid = RandomizedSearchCV(
         xgboost_pipe,
-        param_grid=params,
+        param_distributions=params,
+        n_iter=50,
         cv=inner_cv,
         scoring=scorers,
         refit="auc",
@@ -185,7 +187,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
 
     # calculate nested validation scores
     for i, (train_index, test_index) in enumerate((outer_cv).split(X, y)):
-        iter = i + 1
+        iter = i + 4
 
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
@@ -219,7 +221,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # for each data set:
-    for ds_name in ["bene1", "bene2", "UK", "german"]:
+    for ds_name in ["german"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

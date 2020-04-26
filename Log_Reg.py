@@ -18,7 +18,7 @@ from sklearn.preprocessing import (
     OneHotEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -72,9 +72,7 @@ scorers = {
 def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
 
     # load data
-    X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
-        data_path, descriptor_path
-    )
+    X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
 
     # set up preprocessing pipelines
     # numeric pipeline with imputing, HighVIF and Scaling
@@ -128,11 +126,11 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
 
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__penalty": ["l2"],
-        "clf__C": [4],
-        "clf__fit_intercept": [True],
-        "clf__dual": [False],
-        "clf__solver": ["liblinear"],
+        "clf__penalty": ["l1", "l2", "none"],
+        "clf__C": [0.001, 0.009, 0.01, 0.09, 1, 5, 10, 25, 50, 100],
+        "clf__fit_intercept": [True, False],
+        "clf__dual": [False, True],
+        "clf__solver": ["liblinear", "lbfgs", "saga"],
         "preprocessing__numerical__highVifDropper": [
             HighVIFDropper(threshold=10),
             "passthrough",
@@ -154,13 +152,14 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+    inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
     outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
-    logreg_grid = GridSearchCV(
+    logreg_grid = RandomizedSearchCV(
         logreg_pipe,
-        param_grid=params,
+        param_distributions=params,
+        n_iter=50,
         cv=inner_cv,
         scoring=scorers,
         refit="auc",
@@ -211,7 +210,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["bene1"]:
+    for ds_name in ["bene2"]:
         print(ds_name)
         # define embedding model saved model file
         embedding_model = None

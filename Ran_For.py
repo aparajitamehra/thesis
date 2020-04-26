@@ -5,6 +5,7 @@ from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from scikitplot.helpers import binary_ks_curve
 import matplotlib.pyplot as plt
+from scipy import stats
 
 from sklearn.ensemble import RandomForestClassifier
 
@@ -18,9 +19,8 @@ from sklearn.preprocessing import (
 )
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import (
-    GridSearchCV,
-    # RandomizedSearchCV,
     StratifiedKFold,
+    RandomizedSearchCV,
 )
 from sklearn.metrics import (
     make_scorer,
@@ -127,12 +127,15 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
+    max_depth = [int(x) for x in np.linspace(5, 20, num=15)]
+    max_depth.append(None)
+
     # set up grid search for preprocessing options and classifier parameters
     params = {
-        "clf__n_estimators": [100, 500, 1200],
-        "clf__max_depth": ["none", 5, 10, 25],
-        "clf__min_samples_split": [2, 7, 12],
-        "clf__min_samples_leaf": [1, 5, 10],
+        "clf__n_estimators": stats.randint(100, 1200),
+        "clf__max_depth": max_depth,
+        "clf__min_samples_split": [2, 3, 5, 7, 9, 12],
+        "clf__min_samples_leaf": stats.randint(1, 10),
         "clf__criterion": ["gini", "entropy"],
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
@@ -152,13 +155,14 @@ def main_ranfor(data_path, descriptor_path, embedding_model, ds_name):
     }
 
     # define nested cross validation parameters
-    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+    inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
     outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=13)
 
     # define grid search for classifier
-    ranfor_grid = GridSearchCV(
+    ranfor_grid = RandomizedSearchCV(
         ranfor_pipe,
-        param_grid=params,
+        param_distributions=params,
+        n_iter=50,
         cv=inner_cv,
         scoring=scorers,
         refit="auc",
