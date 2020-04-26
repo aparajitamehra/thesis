@@ -196,7 +196,7 @@ def main_2Dcnn_emb(data_path, descriptor_path, embedding_model, ds_name):
             hypermodel=buildmodel,
             objective=Objective("val_auc", direction="max"),
             max_trials=100,
-            executions_per_trial=2,
+            executions_per_trial=1,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
             overwrite=True,
