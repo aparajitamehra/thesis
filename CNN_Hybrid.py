@@ -110,15 +110,14 @@ def preprocess(X, X_train, y_train, X_test, y_test):
         n_bins,
     )
 
-
 def buildmodel(hp):
 
     # numerical
     num_input = tf.keras.Input(shape=(n_bins, n_num, 1))
     # x = num_input
-    filters = hp.Choice("filters", values=[8, 16, 32])
-    cat_neurons=hp.Choice("cat_neurons", values =[2,4,6])
-    hidden1_neurons=hp.Choice("hidden1_neurons", values =[4,8,10])
+    filters = hp.Choice("filters", values=[4, 8, 16, 32])
+    cat_neurons=hp.Choice("cat_neurons", values =[2,4,8])
+    hidden1_neurons=hp.Choice("hidden1_neurons", values =[2,4,8])
     # kernel_size = hp.Choice('kernel_size', [(1,1),(3,3),(5,5)])
 
     conv11 = tf.keras.layers.Convolution2D(
@@ -153,7 +152,7 @@ def buildmodel(hp):
     model.compile(
         loss="binary_crossentropy",
         optimizer=keras.optimizers.Adam(
-            hp.Choice("learning_rate", values=[1e-1, 1e-2, 1e-3, 1e-4, 1e-5])
+            hp.Choice("learning_rate", values=[1e-1, 1e-2, 1e-3, 1e-4])
         ),
         metrics=["accuracy", tf.keras.metrics.AUC(name="auc")],
     )
@@ -208,8 +207,8 @@ def main_2Dcnn_hybrid(data_path, descriptor_path, ds_name):
         tuner = RandomSearch(
             buildmodel,
             objective=Objective("val_auc", direction="max"),
-            max_trials=200,
-            executions_per_trial=2,
+            max_trials=100,
+            executions_per_trial=1,
             directory=f"kerastuner/{clf}",
             project_name=f"{ds_name}_tuning_{iter}",
             overwrite=True,
