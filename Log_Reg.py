@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from keras.models import load_model
 
@@ -17,7 +18,7 @@ from sklearn.preprocessing import (
     OneHotEncoder,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import GridSearchCV, cross_validate, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.metrics import (
     make_scorer,
     recall_score,
@@ -35,8 +36,10 @@ from utils.entity_embedding import EntityEmbedder
 from utils.model_evaluation import (
     plot_roc,
     plot_cm,
-    evaluate_sklearn,
+    evaluate_metrics,
     plot_KS,
+    evaluate_parameters,
+    roc_iter,
 )
 
 
@@ -62,7 +65,7 @@ scorers = {
     "precision_score": make_scorer(precision_score),
     "recall_score": make_scorer(recall_score),
     "brier_score_loss": make_scorer(brier_score_loss),
-    "ks_stat": make_scorer(ks)
+    "ks_stat": make_scorer(ks),
 }
 
 
@@ -156,36 +159,48 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
 
     # define grid search for classifier
     logreg_grid = GridSearchCV(
-        logreg_pipe, param_grid=params, cv=inner_cv, scoring=scorers, refit="auc", verbose=3
-    )
-
-    # fit pipeline to cross validated data
-    logreg_model = logreg_grid.fit(X_train, y_train)
-
-    # calculate nested validation scores
-    scores = cross_validate(
-        logreg_model, X_train, y_train, cv=outer_cv, scoring=scorers
+        logreg_pipe,
+        param_grid=params,
+        cv=inner_cv,
+        scoring=scorers,
+        refit="auc",
+        verbose=1,
     )
 
     clf = "logreg"
+    modelname = f"{clf}_{ds_name}"
 
-    # # generate predictions for test data using fitted model
-    class_preds = logreg_model.predict(X_test)
-    proba_preds = logreg_model.predict_proba(X_test)[:, 1]
-    ks_preds = logreg_model.predict_proba(X_test)
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+    fig = plt.figure(figsize=(10, 10))
 
-    # get best parameters and CV metrics, plot CM and ROC
-    evaluate_sklearn(
-        y_test,
-        proba_preds=proba_preds,
-        scores=scores,
-        clf_name=clf,
-        model=logreg_model,
-        ds_name=ds_name,
-    )
-    plot_cm(y_test, class_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
-    plot_roc(y_test, proba_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
-    plot_KS(y_test, ks_preds, clf_name=clf, modelname=f"{clf}_{ds_name}", iter="")
+    # calculate nested validation scores
+    for i, (train_index, test_index) in enumerate((outer_cv).split(X, y)):
+        iter = i + 1
+
+        x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        logreg_model = logreg_grid.fit(x_train_split, y_train)
+
+        # # generate predictions for test data using fitted model
+        class_preds = logreg_model.predict(x_test_split)
+        proba_preds = logreg_model.predict_proba(x_test_split)[:, 1]
+        ks_preds = logreg_model.predict_proba(x_test_split)
+
+        # get best parameters and CV metrics, plot CM and ROC
+        evaluate_parameters(
+            clf_name=clf, model=logreg_model, ds_name=ds_name, iter=iter,
+        )
+        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        plot_cm(y_test, class_preds, clf_name=clf, modelname=modelname, iter=iter)
+        plot_KS(y_test, ks_preds, clf_name=clf, modelname=modelname, iter=iter)
+        roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
+
+    plot_roc(tprs, aucs, mean_fpr, clf, modelname=modelname)
+    fig.savefig(f"results/{clf}/{modelname}_ROC.png")
+    plt.close(fig)
 
     # # save best model
     # joblib.dump(logreg_model.best_estimator_,
