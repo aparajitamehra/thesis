@@ -19,10 +19,15 @@ from utils.model_evaluation import evaluate_metrics, plot_cm, plot_roc, roc_iter
 
 
 def preprocess(X, X_train, y_train, X_test):
+
+    # define no. of bins
     n_bins = 10
+
+    # implement oversampling on train set
     oversampler = RandomOverSampler(sampling_strategy=0.8, random_state=42)
     X_train, y_train = oversampler.fit_resample(X_train, y_train)
 
+    # set up numeric pipeline with binning
     numeric_features = X.select_dtypes("number").columns
     print("n_numeric: ", numeric_features.size)
     numeric_pipeline = Pipeline(
@@ -36,13 +41,17 @@ def preprocess(X, X_train, y_train, X_test):
             ),
         ]
     )
+
+    # apply numeric pipeline in column transformer
     preprocessor = ColumnTransformer(
         transformers=[("numerical", numeric_pipeline, numeric_features)]
     )
 
+    # fit preprocessing on train set, and apply to train and test
     X_train_binned = preprocessor.fit_transform(X_train, y_train)
     X_test_binned = preprocessor.transform(X_test)
 
+    # define shape variables
     n_inst_train = X_train_binned.shape[0]
     n_inst_test = X_test_binned.shape[0]
     n_var = int(X_train_binned.shape[1] / n_bins)
@@ -63,11 +72,11 @@ def preprocess(X, X_train, y_train, X_test):
         row_dense = row_reshaped.todense()
         instances_test.append(row_dense)
 
-    # reformat instances from lists into arrays, so they can be shuffled in unison
+    # reformat instances from lists into arrays
     instances_train = np.array(instances_train)
     instances_test = np.array(instances_test)
 
-    # reshape train, test and validation sets to make them appropriate input to CNN
+    # reshape train, test sets to be compatible with 2D CNN
     X_train_final = instances_train.reshape(n_inst_train, n_bins, n_var, 1)
     X_test_final = instances_test.reshape(n_inst_test, n_bins, n_var, 1)
 
@@ -75,11 +84,17 @@ def preprocess(X, X_train, y_train, X_test):
 
 
 def buildmodel(hp):
+
+    model = None
+
+    # define hyperparameter choices
     filters = hp.Choice("filters", values=[4, 8, 16, 32])
     dense1 = hp.Choice("dense_1", values=[2, 4, 8])
 
-    model = None
+    # set up keras model
     model = keras.Sequential()
+
+    # add 2D CNN layer
     model.add(
         keras.layers.Conv2D(
             filters=filters,
@@ -90,18 +105,29 @@ def buildmodel(hp):
         )
     )
 
+    # add pooling layer with different strategy choices
     if hp.Choice("pooling_", values=["avg", "max"]) == "max":
         model.add(keras.layers.MaxPooling2D(pool_size=2))
     else:
         model.add(keras.layers.AveragePooling2D(pool_size=2))
 
+    # flatten 2D output to feed into dense layer
     model.add(keras.layers.Flatten())
+
+    # add final dense layers
     model.add(keras.layers.Dense(dense1, activation="relu"))
     model.add(keras.layers.Dense(1, activation="sigmoid"))
 
+    # compile model, define hyperparameter choices for learning rate
     model.compile(
         optimizer=keras.optimizers.Adam(
-            hp.Choice("learning_rate", values=[1e-1, 1e-2, 1e-3, 1e-4])
+            hp.Float(
+                "learning_rate",
+                min_value=1e-2,
+                max_value=2e-1,
+                sampling="LOG",
+                default=1e-1,
+            )
         ),
         loss="binary_crossentropy",
         metrics=["accuracy", tf.keras.metrics.AUC(name="auc")],
@@ -114,11 +140,12 @@ def main_2Dcnn_base(data_path, descriptor_path, ds_name):
     global n_var
     global n_bins
 
+    # load data
     X, y, _, _, _, _ = load_credit_scoring_data(
         data_path, descriptor_path, rearrange="True"
     )
 
-    n_split = 5
+    # define variables for results and plots
     clf = "2Dcnn_base"
     modelname = f"{clf}_{ds_name}"
 
@@ -127,18 +154,23 @@ def main_2Dcnn_base(data_path, descriptor_path, ds_name):
     mean_fpr = np.linspace(0, 1, 100)
     fig = plt.figure(figsize=(10, 10))
 
+    # set up 5-fold cross validation split
+    n_split = 5
     for i, (train_index, test_index) in enumerate(
         StratifiedKFold(n_split, random_state=13, shuffle=True).split(X, y)
     ):
         iter = i + 1
 
+        # split data into cross validation subsets based on split index
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        # apply all preprocessing within CV fold
         X_train, y_train, X_test, n_var, n_bins = preprocess(
             X, x_train_split, y_train, x_test_split
         )
 
+        # set up random search parameters
         tuner = RandomSearch(
             hypermodel=buildmodel,
             objective=Objective("val_auc", direction="max"),
@@ -149,6 +181,7 @@ def main_2Dcnn_base(data_path, descriptor_path, ds_name):
             overwrite=True,
         )
 
+        # train and tune model using random search
         tuner.search(
             X_train,
             y_train,
@@ -159,30 +192,37 @@ def main_2Dcnn_base(data_path, descriptor_path, ds_name):
             ],
         )
 
+        # define best model
         best_model = tuner.get_best_models(1)[0]
 
+        # generate predictions for test data using best model
         proba_preds = best_model.predict(X_test)
         class_preds = best_model.predict_classes(X_test)
 
+        # get CV metrics, plot CM, KS and ROC
         evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
         plot_cm(y_test, class_preds, clf, modelname=modelname, iter=iter, p=0.5)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 
+    # plot model architecture
     plot_model(
         model=best_model,
         to_file=f"model_plots/{clf}_{ds_name}_model_plot.png",
         show_shapes=True,
     )
-    plot_roc(tprs, aucs, mean_fpr, clf, modelname=modelname)
+
+    # plot combined ROC for all CV folds
+    plot_roc(tprs, aucs, mean_fpr, modelname=modelname)
     fig.savefig(f"results/{clf}/{modelname}_ROC.png")
     plt.close(fig)
 
 
 if __name__ == "__main__":
 
-    for ds_name in ["bene1", "bene2", "german"]:
+    for ds_name in ["german", "UK", "bene1", "bene2"]:
         print(ds_name)
 
+        # run main function
         main_2Dcnn_base(
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",

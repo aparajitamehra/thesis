@@ -9,7 +9,6 @@ from scikitplot.helpers import binary_ks_curve
 
 from sklearn.linear_model import LogisticRegression
 
-# from sklearn.externals import joblib
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
     StandardScaler,
@@ -74,8 +73,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     # load data
     X, y, _, _, _, _ = load_credit_scoring_data(data_path, descriptor_path)
 
-    # set up preprocessing pipelines
-    # numeric pipeline with imputing, HighVIF and Scaling
+    # set up numeric pipeline template
     numeric_features = X.select_dtypes("number").columns
     numeric_pipeline = Pipeline(
         steps=[
@@ -85,21 +83,22 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # categorical pipeline with encoding options
+    # set up categorical pipeline
     categorical_features = X.select_dtypes(include=("category", "bool")).columns
 
     # define the possible categories of each variable in the dataset
     encoding_cats = [X[i].unique().tolist() for i in categorical_features]
 
-    # set up a base encoder to allow EntityEmbedder to receive numeric values
+    # set up a base encoder to allow EntityEmbedder/ OneHot to receive numeric values
     base_ordinal_encoder = OrdinalEncoder(categories=encoding_cats)
+
+    # define possible categories of encoded variables for One-Hot encoder
     encoded_X = base_ordinal_encoder.fit_transform(
         X.select_dtypes(include=["category", "bool"]).values
     )
-
-    # define possible categories of encoded variables for one hot encoder
     post_encoding_cats = [np.unique(col) for col in encoded_X.T]
 
+    # categorical pipeline template
     categorical_pipeline = Pipeline(
         steps=[
             ("imputer_cat", SimpleImputer(strategy="constant", fill_value="missing")),
@@ -108,6 +107,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
+    # combine pipelines in column transformer
     preprocessor = ColumnTransformer(
         transformers=[
             ("numerical", numeric_pipeline, numeric_features),
@@ -115,7 +115,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # define pipeline with an oversampler, preprocessor and classifier
+    # set-up full pipeline with an oversampler, preprocessor and classifier
     logreg_pipe = Pipeline(
         [
             ("oversampler", RandomOverSampler(sampling_strategy=0.8, random_state=42)),
@@ -124,7 +124,7 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         ]
     )
 
-    # set up grid search for preprocessing options and classifier parameters
+    # set up grid search for preprocessing options and classifier hyperparameters
     params = {
         "clf__penalty": ["l1", "l2", "none"],
         "clf__C": [0.001, 0.009, 0.01, 0.09, 1, 5, 10, 25, 50, 100],
@@ -155,40 +155,44 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
     inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
     outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=13)
 
-    # define grid search for classifier
+    # define random search for classifier
     logreg_grid = RandomizedSearchCV(
         logreg_pipe,
         param_distributions=params,
-        n_iter=50,
+        n_iter=100,
         cv=inner_cv,
         scoring=scorers,
         refit="auc",
         verbose=1,
     )
 
+    # define variables for results and plot naming
     clf = "logreg"
     modelname = f"{clf}_{ds_name}"
 
+    # set up variables and plots for results
     tprs = []
     aucs = []
     mean_fpr = np.linspace(0, 1, 100)
     fig = plt.figure(figsize=(10, 10))
 
-    # calculate nested validation scores
+    # perform cross validation
     for i, (train_index, test_index) in enumerate((outer_cv).split(X, y)):
         iter = i + 1
 
+        # split data into cross validation subsets based on split index
         x_train_split, x_test_split = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        # apply random search fitting to train data
         logreg_model = logreg_grid.fit(x_train_split, y_train)
 
-        # # generate predictions for test data using fitted model
+        # generate predictions for test data using fitted model
         class_preds = logreg_model.predict(x_test_split)
         proba_preds = logreg_model.predict_proba(x_test_split)[:, 1]
         ks_preds = logreg_model.predict_proba(x_test_split)
 
-        # get best parameters and CV metrics, plot CM and ROC
+        # get best parameters and CV metrics, plot CM, KS and ROC
         evaluate_parameters(
             clf_name=clf, model=logreg_model, ds_name=ds_name, iter=iter,
         )
@@ -197,27 +201,25 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         plot_KS(y_test, ks_preds, clf_name=clf, modelname=modelname, iter=iter)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 
-    plot_roc(tprs, aucs, mean_fpr, clf, modelname=modelname)
+    # plot combined ROC for all CV folds
+    plot_roc(tprs, aucs, mean_fpr, modelname=modelname)
     fig.savefig(f"results/{clf}/{modelname}_ROC.png")
     plt.close(fig)
-
-    # # save best model
-    # joblib.dump(logreg_model.best_estimator_,
-    # f"[old]results_plots/models/{clf}_{ds_name}.pkl")
 
 
 if __name__ == "__main__":
     from pathlib import Path
 
     # for each dataset:
-    for ds_name in ["bene2"]:
+    for ds_name in ["german", "UK", "bene1", "bene2"]:
         print(ds_name)
-        # define embedding model saved model file
+        # define embedding model from saved model file
         embedding_model = None
         embedding_model_path = f"datasets/{ds_name}/embedding_model_{ds_name}.h5"
         if Path(embedding_model_path).is_file():
             embedding_model = load_model(embedding_model_path)
 
+        # run main function
         main_logreg(
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",

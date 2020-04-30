@@ -5,22 +5,13 @@ from sklearn.model_selection import train_test_split
 
 
 def load_credit_scoring_data(data_path, descriptor_path, rearrange=False):
-    """Loads credit scoring data from a CSV file.
+    """Loads credit scoring data from a CSV file"""
 
-    Params:
-        data_path: filename of main data
-        descriptor_path: filename of field descriptor file. Must contain at a minimum a
-            column "Name" with the names of the fields and a column "Type" with the
-            pandas dtype of that field
-
-    Returns:
-        A pandas DataFrame of the data in `data_path` with descriptors set per the
-        contents of `descriptor_path`.
-    """
-
+    # define column names and types
     descriptor = pd.read_csv(descriptor_path)
     dtype_dict = dict(zip(descriptor["Name"], descriptor["Type"]))
 
+    # read data
     data = pd.read_csv(
         data_path,
         header=None,
@@ -29,6 +20,7 @@ def load_credit_scoring_data(data_path, descriptor_path, rearrange=False):
         dtype=dtype_dict,
     )
 
+    # output rearranged columns for CNNs
     if rearrange:
 
         target = data.pop("censor")
@@ -48,6 +40,7 @@ def load_credit_scoring_data(data_path, descriptor_path, rearrange=False):
         X = data
         print("rearrangetrue")
 
+    # output original, non rearranged data for all others
     else:
         y = data.pop("censor")
         X = data

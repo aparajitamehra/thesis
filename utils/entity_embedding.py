@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 
 
 class EntityEmbedder(BaseEstimator, TransformerMixin):
+    """Custom Transformer that learns Entity Embeddings for Categorical Variables,
+    and applies them to data through a Pipeline using a saved embedding model"""
+
     def __init__(self, embedding_model=None):
         self.embedding_model = embedding_model
 
@@ -28,15 +31,12 @@ class EntityEmbedder(BaseEstimator, TransformerMixin):
             return self
 
     def _fit(self, X, y):
-
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, stratify=y, test_size=0.2
         )
-
         X_train, X_val, y_train, y_val = train_test_split(
             X_train, y_train, test_size=0.2
         )
-
         input_models = []
         output_embeddings = []
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     from sklearn.preprocessing import OrdinalEncoder
     from utils.data_loading import load_credit_scoring_data
 
-    for ds_name in ["bene1", "bene2", "german"]:
+    for ds_name in ["bene1", "bene2", "german", "UK"]:
         X, y, X_train, X_test, y_train, y_test = load_credit_scoring_data(
             f"datasets/{ds_name}/input_{ds_name}.csv",
             f"datasets/{ds_name}/descriptor_{ds_name}.csv",

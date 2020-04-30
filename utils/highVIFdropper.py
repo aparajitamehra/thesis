@@ -5,7 +5,8 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
 class HighVIFDropper(BaseEstimator, TransformerMixin):
-    """Transformer that drops numerical columns with high variance inflation factor."""
+    """Custom Transformer that drops numerical
+    columns with high variance inflation factor."""
 
     def __init__(self, threshold=10):
         self.threshold = threshold
@@ -22,11 +23,7 @@ class HighVIFDropper(BaseEstimator, TransformerMixin):
         return np.delete(X, self._high_vif_cols, axis=1)
 
     def _identify_high_vif(self, data):
-        """Identifies columns with a variance inflation factor (VIF) over `self.threshold`.
-
-        Params:
-            data: an np.ndarray of numerical data with shape (num_samples, num_columns)
-        """
+        """Identifies columns with a VIF over `self.threshold`."""
 
         original_indices = [i for i in range(data.shape[1])]
         x = 0
