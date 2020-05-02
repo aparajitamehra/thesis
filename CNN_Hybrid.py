@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 from tensorflow.keras.utils import plot_model
 from kerastuner import Objective, RandomSearch
+from keras.engine.saving import load_model
 from scipy.sparse import isspmatrix
 
 from imblearn.over_sampling import RandomOverSampler
@@ -12,15 +13,16 @@ from imblearn.over_sampling import RandomOverSampler
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import KBinsDiscretizer, StandardScaler, OneHotEncoder
+from sklearn.preprocessing import KBinsDiscretizer, StandardScaler, OrdinalEncoder
 from sklearn.model_selection import StratifiedKFold
 
 from utils.data_loading import load_credit_scoring_data
+from utils.entity_embedding import EntityEmbedder
 from utils.highVIFdropper import HighVIFDropper
 from utils.model_evaluation import evaluate_metrics, plot_cm, plot_roc, roc_iter
 
 
-def preprocess(X, X_train, y_train, X_test, y_test):
+def preprocess(X, X_train, y_train, X_test, y_test, embedding_model):
 
     # define no. of bins
     n_bins = 10
@@ -84,10 +86,13 @@ def preprocess(X, X_train, y_train, X_test, y_test):
 
     # set up categorical pipeline for ANN input
     categorical_features = X.select_dtypes(include=("bool", "category")).columns
+    encoding_cats = [sorted(X[i].unique().tolist()) for i in categorical_features]
+
     categorical_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore")),
+            ("baseencoder", OrdinalEncoder(categories=encoding_cats)),
+            ("onehot", EntityEmbedder(embedding_model=embedding_model)),
         ]
     )
     # apply pipeline in column transformer
@@ -227,7 +232,7 @@ def main_2Dcnn_hybrid(data_path, descriptor_path, ds_name):
             n_num,
             n_cat,
             n_bins,
-        ) = preprocess(X, x_train_split, y_train, x_test_split, y_test)
+        ) = preprocess(X, x_train_split, y_train, x_test_split, y_test, embedding_model)
 
         # set up random search parameters
         tuner = RandomSearch(
@@ -260,7 +265,9 @@ def main_2Dcnn_hybrid(data_path, descriptor_path, ds_name):
         class_preds = proba_preds.round()
 
         # get CV metrics, plot CM, KS and ROC
-        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        evaluate_metrics(
+            y_test, class_preds, proba_preds, proba_preds, clf, ds_name, iter=iter
+        )
         plot_cm(y_test, class_preds, clf, modelname=modelname, iter=iter, p=0.5)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 
@@ -278,9 +285,15 @@ def main_2Dcnn_hybrid(data_path, descriptor_path, ds_name):
 
 
 if __name__ == "__main__":
+    from pathlib import Path
 
-    for ds_name in ["german", "UK", "bene1", "bene2"]:
+    for ds_name in ["german"]:
         print(ds_name)
+        # define embedding model from saved model file
+        embedding_model = None
+        embedding_model_path = f"datasets/{ds_name}/embedding_model_{ds_name}.h5"
+        if Path(embedding_model_path).is_file():
+            embedding_model = load_model(embedding_model_path)
 
         # run main function
         main_2Dcnn_hybrid(

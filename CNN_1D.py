@@ -187,10 +187,13 @@ def main_1Dcnn(data_path, descriptor_path, embedding_model, ds_name):
 
         # generate predictions for test data using best model
         proba_preds = best_model.predict(X_test)
+        ks_preds = best_model.predict(X_test).reshape(X_test.shape[0],)
         class_preds = best_model.predict_classes(X_test)
 
         # get CV metrics, plot CM, KS and ROC
-        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        evaluate_metrics(
+            y_test, class_preds, proba_preds, ks_preds, clf, ds_name, iter=iter
+        )
         plot_cm(y_test, class_preds, clf, modelname=modelname, iter=iter, p=0.5)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
 

@@ -32,11 +32,13 @@ def evaluate_parameters(clf_name, model, ds_name, iter):
         f.write(f"Best scores index: {model.best_index_}\n\n\n")
 
 
-def evaluate_metrics(y_test, class_preds, proba_preds, clf_name, ds_name, iter):
+def evaluate_metrics(
+    y_test, class_preds, proba_preds, ks_preds, clf_name, ds_name, iter
+):
     """Function to output a csv file with key model metrics"""
 
     # calculate ks_stat
-    res = binary_ks_curve(y_test, proba_preds)
+    res = binary_ks_curve(y_test, ks_preds)
     ks_stat = res[3]
 
     with open(f"results/{clf_name}/{clf_name}_metrics.csv", "a", newline="") as csvfile:

@@ -170,7 +170,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
     xgboost_grid = RandomizedSearchCV(
         xgboost_pipe,
         param_distributions=params,
-        n_iter=100,
+        n_iter=1,
         cv=inner_cv,
         scoring=scorers,
         refit="auc",
@@ -207,7 +207,9 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         evaluate_parameters(
             clf_name=clf, model=xgboost_model, ds_name=ds_name, iter=iter,
         )
-        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        evaluate_metrics(
+            y_test, class_preds, proba_preds, proba_preds, clf, ds_name, iter=iter
+        )
         plot_cm(y_test, class_preds, clf_name=clf, modelname=modelname, iter=iter)
         plot_KS(y_test, ks_preds, clf_name=clf, modelname=modelname, iter=iter)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
@@ -222,7 +224,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # for each data set:
-    for ds_name in ["german", "UK", "bene1", "bene2"]:
+    for ds_name in ["german"]:
         print(ds_name)
         # define embedding model from saved model file
         embedding_model = None

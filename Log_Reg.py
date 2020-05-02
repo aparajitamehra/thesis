@@ -196,7 +196,9 @@ def main_logreg(data_path, descriptor_path, embedding_model, ds_name):
         evaluate_parameters(
             clf_name=clf, model=logreg_model, ds_name=ds_name, iter=iter,
         )
-        evaluate_metrics(y_test, class_preds, proba_preds, clf, ds_name, iter=iter)
+        evaluate_metrics(
+            y_test, class_preds, proba_preds, proba_preds, clf, ds_name, iter=iter
+        )
         plot_cm(y_test, class_preds, clf_name=clf, modelname=modelname, iter=iter)
         plot_KS(y_test, ks_preds, clf_name=clf, modelname=modelname, iter=iter)
         roc_iter(y_test, proba_preds, tprs, mean_fpr, aucs, iter)
