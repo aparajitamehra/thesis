@@ -144,7 +144,7 @@ def main_xgboost(data_path, descriptor_path, embedding_model, ds_name):
         "clf__min_child_weight": [1, 2, 3, 4, 5],
         "clf__gamma": stats.uniform(0, 0.5),
         "clf__colsample_bytree": stats.uniform(0.5, 0.5),
-        "clf__n_estimators": stats.randint(150, 1000),
+        "clf__n_estimators": stats.randint(100, 1200),
         "preprocessing__numerical__highVifDropper": [HighVIFDropper(), "passthrough"],
         "preprocessing__numerical__scaler": [
             StandardScaler(),

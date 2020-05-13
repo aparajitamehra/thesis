@@ -140,6 +140,7 @@ def buildmodel(hp):
     # define hyperparameter choices
     filters = hp.Choice("filters", values=[4, 8, 16, 32])
     # kernel_size = hp.Choice('kernel_size', [(1,1),(3,3),(5,5)])
+    dense = hp.Choice("dense", values=[2, 4, 8])
 
     # set up 2D CNN layer for numeric input
     conv11 = tf.keras.layers.Convolution2D(
@@ -161,13 +162,13 @@ def buildmodel(hp):
     cat_input = tf.keras.Input(shape=(n_cat,))
 
     # set up dense ANN layer for categorical input
-    dense21 = tf.keras.layers.Dense(6, activation="relu")(cat_input)
+    dense21 = tf.keras.layers.Dense(dense, activation="relu")(cat_input)
 
     # merge CNN and ANN layers
     merge = tf.keras.layers.concatenate([flat1, dense21])
 
     # add final dense layers
-    hidden1 = tf.keras.layers.Dense(10, activation="relu")(merge)
+    hidden1 = tf.keras.layers.Dense(dense, activation="relu")(merge)
     output = tf.keras.layers.Dense(1, activation="sigmoid")(hidden1)
 
     # set up full keras API model

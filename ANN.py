@@ -77,7 +77,7 @@ def buildmodel(hp):
     model.add(tf.keras.Input(shape=(xdim,)))
 
     # define hyperparameter choices for no. layers/ no.units
-    for i in range(hp.Int("nr_layers", 2, 4)):
+    for i in range(hp.Int("nr_layers", 1, 3)):
         model.add(
             keras.layers.Dense(
                 units=hp.Int("units_" + str(i + 1), min_value=2, max_value=16, step=2),
