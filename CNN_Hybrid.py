@@ -138,9 +138,9 @@ def buildmodel(hp):
     num_input = tf.keras.Input(shape=(n_bins, n_num, 1))
 
     # define hyperparameter choices
-    filters = hp.Choice("filters", values=[4, 8, 16, 32])
-    # kernel_size = hp.Choice('kernel_size', [(1,1),(3,3),(5,5)])
+    filters = hp.Choice("filters", values=[4, 8, 16])
     dense = hp.Choice("dense", values=[2, 4, 8])
+    # kernel_size = hp.Choice('kernel_size', [(1,1),(3,3),(5,5)])
 
     # set up 2D CNN layer for numeric input
     conv11 = tf.keras.layers.Convolution2D(
